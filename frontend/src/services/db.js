@@ -1,0 +1,46 @@
+import Dexie from 'dexie'
+
+const db = new Dexie('PickingWebApp')
+
+db.version(1).stores({
+  orders: 'id, wc_id, status, order_date, synced',
+  orderItems: 'id, order_id, product_id, is_picked',
+  products: 'id, wc_id, sku, qr_code',
+  qrMappings: 'id, qr_code, sku',
+  syncQueue: '++id, type, timestamp, synced'
+})
+
+export const ordersDB = db.orders
+export const orderItemsDB = db.orderItems
+export const productsDB = db.products
+export const qrMappingsDB = db.qrMappings
+export const syncQueueDB = db.syncQueue
+
+export async function clearAllData() {
+  await Promise.all([
+    ordersDB.clear(),
+    orderItemsDB.clear(),
+    productsDB.clear(),
+    qrMappingsDB.clear(),
+    syncQueueDB.clear()
+  ])
+}
+
+export async function addToSyncQueue(type, data) {
+  return await syncQueueDB.add({
+    type,
+    data,
+    timestamp: new Date(),
+    synced: false
+  })
+}
+
+export async function getPendingSyncs() {
+  return await syncQueueDB.where('synced').equals(false).toArray()
+}
+
+export async function markSyncComplete(id) {
+  return await syncQueueDB.update(id, { synced: true })
+}
+
+export default db

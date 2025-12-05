@@ -1,0 +1,539 @@
+<template>
+  <div class="admin-container">
+    <header class="admin-header">
+      <button @click="goBack" class="btn-back">← Retour</button>
+      <h1>Gestion QR Codes ↔ SKU</h1>
+    </header>
+
+    <main class="admin-content">
+      <div class="products-section">
+        <div class="section-header">
+          <h2>Produits et QR Codes</h2>
+          <div class="header-actions">
+            <button @click="generateAllQR" class="btn-generate">
+              🔄 Générer QR pour tous
+            </button>
+            <button @click="printAllQR" class="btn-print" :disabled="!hasQRCodes">
+              🖨️ Imprimer tous les QR
+            </button>
+          </div>
+        </div>
+
+        <div v-if="loading" class="loading">
+          Chargement des produits...
+        </div>
+
+        <div v-else class="products-table">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Nom</th>
+                <th>Emplacement</th>
+                <th>QR Code</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in products" :key="product.id">
+                <td class="sku">{{ product.sku }}</td>
+                <td>{{ product.name }}</td>
+                <td>
+                  <input
+                    v-model="product.location"
+                    type="text"
+                    placeholder="Ex: A1-B2"
+                    @blur="updateProduct(product)"
+                    class="input-location"
+                  />
+                </td>
+                <td>
+                  <div v-if="product.qr_code" class="qr-display">
+                    <canvas :id="`qr-${product.id}`" class="qr-canvas"></canvas>
+                    <span class="qr-value">{{ product.qr_code }}</span>
+                  </div>
+                  <button v-else @click="generateQR(product)" class="btn-small">
+                    Générer QR
+                  </button>
+                </td>
+                <td>
+                  <button @click="downloadQR(product)" class="btn-download" :disabled="!product.qr_code">
+                    📥 Télécharger
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="import-section">
+        <h2>Import CSV</h2>
+        <p>Format: SKU,QR_CODE,LOCATION</p>
+        <input type="file" @change="handleFileUpload" accept=".csv" />
+      </div>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
+import api from '../services/api'
+
+const router = useRouter()
+const products = ref([])
+const loading = ref(true)
+
+const hasQRCodes = computed(() => {
+  return products.value.some(p => p.qr_code)
+})
+
+onMounted(async () => {
+  await loadProducts()
+})
+
+async function loadProducts() {
+  loading.value = true
+  try {
+    const response = await api.get('/products')
+    products.value = response.data.products
+
+    // Générer les QR codes visuels après chargement
+    await nextTick()
+    products.value.forEach(product => {
+      if (product.qr_code) {
+        renderQRCode(product)
+      }
+    })
+  } catch (error) {
+    console.error('Erreur chargement produits:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function generateQR(product) {
+  try {
+    // Générer un QR code basé sur le SKU
+    const qrCode = `QR-${product.sku}`
+
+    await api.put(`/products/${product.id}/qr`, {
+      qrCode
+    })
+
+    product.qr_code = qrCode
+
+    await nextTick()
+    renderQRCode(product)
+
+    alert(`QR Code généré: ${qrCode}`)
+  } catch (error) {
+    console.error('Erreur génération QR:', error)
+    alert('Erreur lors de la génération du QR code')
+  }
+}
+
+async function generateAllQR() {
+  if (!confirm('Générer des QR codes pour tous les produits sans QR ?')) {
+    return
+  }
+
+  for (const product of products.value) {
+    if (!product.qr_code) {
+      await generateQR(product)
+    }
+  }
+
+  alert('QR codes générés pour tous les produits !')
+}
+
+async function updateProduct(product) {
+  try {
+    await api.put(`/products/${product.id}`, {
+      location: product.location
+    })
+  } catch (error) {
+    console.error('Erreur mise à jour produit:', error)
+  }
+}
+
+async function renderQRCode(product) {
+  const canvas = document.getElementById(`qr-${product.id}`)
+  if (canvas) {
+    try {
+      await QRCode.toCanvas(canvas, product.qr_code, {
+        width: 100,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      })
+    } catch (error) {
+      console.error('Erreur génération QR visuel:', error)
+    }
+  }
+}
+
+async function downloadQR(product) {
+  if (!product.qr_code) return
+
+  try {
+    // Générer un QR code haute résolution pour l'impression
+    const url = await QRCode.toDataURL(product.qr_code, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `QR_${product.sku}.png`
+    a.click()
+  } catch (error) {
+    console.error('Erreur téléchargement QR:', error)
+    alert('Erreur lors du téléchargement du QR code')
+  }
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    const text = e.target.result
+    const lines = text.split('\n')
+
+    for (let i = 1; i < lines.length; i++) {
+      const [sku, qrCode, location] = lines[i].split(',')
+      if (sku && qrCode) {
+        const product = products.value.find(p => p.sku === sku.trim())
+        if (product) {
+          try {
+            await api.put(`/products/${product.id}/qr`, {
+              qrCode: qrCode.trim(),
+              location: location?.trim()
+            })
+            product.qr_code = qrCode.trim()
+            if (location) product.location = location.trim()
+          } catch (error) {
+            console.error(`Erreur import ${sku}:`, error)
+          }
+        }
+      }
+    }
+
+    await loadProducts()
+    alert('Import terminé !')
+  }
+  reader.readAsText(file)
+}
+
+async function printAllQR() {
+  try {
+    // Créer une fenêtre d'impression avec tous les QR codes
+    const printWindow = window.open('', '_blank')
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Impression QR Codes</title>
+        <style>
+          @media print {
+            @page { margin: 1cm; }
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+          }
+          .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            page-break-inside: avoid;
+          }
+          .qr-item {
+            border: 2px solid #333;
+            padding: 15px;
+            text-align: center;
+            page-break-inside: avoid;
+            border-radius: 8px;
+          }
+          .qr-item img {
+            width: 200px;
+            height: 200px;
+            margin: 10px 0;
+          }
+          .qr-sku {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+          }
+          .qr-name {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+          }
+          .qr-code-text {
+            font-family: monospace;
+            font-size: 12px;
+            color: #999;
+          }
+          .qr-location {
+            font-size: 14px;
+            color: #4caf50;
+            margin-top: 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>QR Codes - Picking WebApp</h1>
+        <div class="qr-grid">
+    `)
+
+    // Générer et ajouter chaque QR code
+    for (const product of products.value) {
+      if (product.qr_code) {
+        const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
+          width: 300,
+          margin: 2
+        })
+
+        printWindow.document.write(`
+          <div class="qr-item">
+            <div class="qr-sku">SKU: ${product.sku}</div>
+            <div class="qr-name">${product.name}</div>
+            <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
+            <div class="qr-code-text">${product.qr_code}</div>
+            ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+          </div>
+        `)
+      }
+    }
+
+    printWindow.document.write(`
+        </div>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+
+    // Attendre le chargement des images puis imprimer
+    setTimeout(() => {
+      printWindow.print()
+    }, 500)
+  } catch (error) {
+    console.error('Erreur impression QR:', error)
+    alert('Erreur lors de la préparation de l\'impression')
+  }
+}
+
+function goBack() {
+  router.push('/dashboard')
+}
+</script>
+
+<style scoped>
+.admin-container {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.admin-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-back {
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-header h1 {
+  font-size: 1.5rem;
+  color: #333;
+  margin: 0;
+}
+
+.admin-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.products-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-generate {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-print {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-print:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #ccc;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.products-table {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: #f5f7fa;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sku {
+  font-family: monospace;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.input-location {
+  padding: 0.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.qr-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qr-canvas {
+  width: 100px;
+  height: 100px;
+  border: 1px solid #e0e0e0;
+}
+
+.qr-value {
+  font-family: monospace;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.btn-small {
+  padding: 0.5rem 1rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-download {
+  padding: 0.5rem 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.import-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.import-section h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.import-section p {
+  color: #666;
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+}
+
+input[type="file"] {
+  padding: 0.75rem;
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  width: 100%;
+  cursor: pointer;
+}
+</style>
