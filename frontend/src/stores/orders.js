@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
+import { ordersDB, orderItemsDB } from '../services/db'
+import syncService from '../services/sync'
 
 export const useOrdersStore = defineStore('orders', () => {
   const orders = ref([])
@@ -23,11 +25,30 @@ export const useOrdersStore = defineStore('orders', () => {
     error.value = null
 
     try {
-      const params = new URLSearchParams(filters).toString()
-      const response = await api.get(`/orders${params ? '?' + params : ''}`)
-      orders.value = response.data.orders
+      // Si online, charger depuis l'API
+      if (syncService.isOnline()) {
+        try {
+          const params = new URLSearchParams(filters).toString()
+          const response = await api.get(`/orders${params ? '?' + params : ''}`)
+          orders.value = response.data.orders
 
+          // Sauvegarder dans IndexedDB pour usage offline
+          await ordersDB.bulkPut(response.data.orders.map(order => ({
+            ...order,
+            synced: true
+          })))
+
+          return { success: true }
+        } catch (err) {
+          console.warn('Erreur API, chargement depuis le cache:', err)
+        }
+      }
+
+      // Si offline ou erreur API, charger depuis le cache
+      const cachedOrders = await ordersDB.toArray()
+      orders.value = cachedOrders
       return { success: true }
+
     } catch (err) {
       error.value = err.response?.data?.message || 'Erreur lors de la récupération des commandes'
       return { success: false, error: error.value }
@@ -42,9 +63,36 @@ export const useOrdersStore = defineStore('orders', () => {
 
     try {
       const response = await api.post('/orders/sync')
-
-      // Rafraîchir la liste après synchronisation
       await fetchOrders()
+
+      // Charger les détails complets de toutes les commandes pour usage offline
+      if (orders.value.length > 0) {
+        console.log(`Chargement des détails de ${orders.value.length} commandes...`)
+
+        for (const order of orders.value) {
+          try {
+            const detailResponse = await api.get(`/orders/${order.id}`)
+            const fullOrder = detailResponse.data
+
+            // Sauvegarder la commande complète
+            await ordersDB.put({ ...fullOrder, synced: true })
+
+            // Supprimer les anciens items de cette commande pour éviter les doublons
+            await orderItemsDB.where('order_id').equals(order.id).delete()
+
+            // Sauvegarder tous les nouveaux items
+            if (fullOrder.items && fullOrder.items.length > 0) {
+              for (const item of fullOrder.items) {
+                await orderItemsDB.put({ ...item, order_id: order.id })
+              }
+            }
+          } catch (err) {
+            console.warn(`Erreur lors du chargement de la commande ${order.id}:`, err)
+          }
+        }
+
+        console.log('✅ Toutes les commandes et leurs items sont en cache')
+      }
 
       return {
         success: true,

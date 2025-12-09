@@ -42,22 +42,88 @@ async function toggleScanner() {
 
 async function startScanner() {
   try {
+    // Vérifier si HTTPS est actif (requis pour la caméra sur iOS)
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      alert('⚠️ HTTPS requis pour la caméra sur iPhone. Utilisez l\'URL ngrok.')
+      return
+    }
+
+    // Activer l'affichage du scanner pour créer l'élément DOM
+    isScanning.value = true
+
+    // Attendre que le DOM soit mis à jour
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // Vérifier que l'élément existe
+    const element = document.getElementById('qr-reader')
+    if (!element) {
+      throw new Error('Élément qr-reader non trouvé dans le DOM')
+    }
+
     qrScanner.value = new Html5Qrcode('qr-reader')
 
-    await qrScanner.value.start(
-      { facingMode: 'environment' }, // Caméra arrière
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 }
-      },
-      onScanSuccess,
-      onScanFailure
-    )
+    // Calculer la taille du QR box en fonction de la taille de l'écran
+    const qrBoxSize = Math.min(window.innerWidth * 0.8, 300)
 
-    isScanning.value = true
+    // Essayer d'abord avec la caméra arrière
+    try {
+      await qrScanner.value.start(
+        { facingMode: 'environment' }, // Caméra arrière
+        {
+          fps: 10,
+          qrbox: { width: qrBoxSize, height: qrBoxSize },
+          aspectRatio: 1.0
+        },
+        onScanSuccess,
+        onScanFailure
+      )
+    } catch (backCameraError) {
+      console.warn('Caméra arrière non disponible, essai avec caméra frontale:', backCameraError)
+      // Si la caméra arrière échoue, essayer la frontale
+      await qrScanner.value.start(
+        { facingMode: 'user' }, // Caméra frontale
+        {
+          fps: 10,
+          qrbox: { width: qrBoxSize, height: qrBoxSize },
+          aspectRatio: 1.0
+        },
+        onScanSuccess,
+        onScanFailure
+      )
+    }
   } catch (error) {
     console.error('Erreur démarrage scanner:', error)
-    alert('Impossible d\'accéder à la caméra. Vérifiez les permissions.')
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      full: JSON.stringify(error, null, 2)
+    })
+
+    // Remettre isScanning à false en cas d'erreur
+    isScanning.value = false
+
+    let errorMsg = 'Impossible d\'accéder à la caméra.\n\n'
+
+    if (error.name === 'NotAllowedError') {
+      errorMsg += '❌ Permission refusée. Allez dans Réglages > Safari > Caméra et autorisez l\'accès.'
+    } else if (error.name === 'NotFoundError') {
+      errorMsg += '❌ Aucune caméra détectée sur cet appareil.'
+    } else if (error.name === 'NotReadableError') {
+      errorMsg += '❌ Caméra déjà utilisée par une autre application.'
+    } else if (error.name === 'SecurityError') {
+      errorMsg += '❌ Accès refusé. HTTPS requis sur iPhone.'
+    } else if (error.name === 'OverconstrainedError') {
+      errorMsg += '❌ Configuration caméra incompatible. Essayez avec la caméra frontale.'
+    } else if (error.message && error.message.includes('Permission')) {
+      errorMsg += '❌ Permission caméra refusée. Vérifiez les réglages Safari.'
+    } else {
+      errorMsg += `Erreur: ${error.message || error.name || JSON.stringify(error) || 'Inconnue'}\n\n`
+      errorMsg += 'Type: ' + (typeof error) + '\n'
+      errorMsg += 'Protocol: ' + location.protocol
+    }
+
+    alert(errorMsg)
   }
 }
 

@@ -5,6 +5,9 @@
       <div class="user-info">
         <span>{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</span>
         <span class="role-badge" :class="authStore.user?.role">{{ authStore.user?.role }}</span>
+        <button @click="router.push('/history')" class="btn-history">
+          📊 Historique
+        </button>
         <button v-if="authStore.isAdmin" @click="router.push('/admin/qr')" class="btn-admin">
           ⚙️ Gestion QR
         </button>
@@ -126,256 +129,307 @@ function handleLogout() {
 <style scoped>
 .dashboard-container {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dashboard-header {
-  background: white;
+  background: var(--bg-card);
   padding: 1.5rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
 }
 
 .dashboard-header h1 {
   font-size: 1.5rem;
-  color: #667eea;
+  color: var(--text-primary);
   margin: 0;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  font-size: 0.938rem;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .role-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  padding: 0.375rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 }
 
 .role-badge.admin {
-  background: #ffeaa7;
-  color: #d63031;
+  background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
 }
 
 .role-badge.preparateur {
-  background: #dfe6e9;
-  color: #2d3436;
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--primary) 100%);
+}
+
+.btn-history, .btn-admin, .btn-logout {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-history {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--secondary) 100%);
+  color: white;
+}
+
+.btn-history:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-admin {
-  padding: 0.5rem 1rem;
-  background: #667eea;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-blue) 100%);
   color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .btn-admin:hover {
-  background: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-logout {
-  padding: 0.5rem 1rem;
-  background: #ff7675;
+  background: linear-gradient(135deg, var(--error) 0%, #DC2626 100%);
   color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .btn-logout:hover {
-  background: #d63031;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
 }
 
 .dashboard-content {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
-.welcome-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  text-align: center;
+.top-section {
+  margin-bottom: 2.5rem;
+  animation: slideUp 0.4s ease;
 }
 
-.welcome-card h2 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.8rem;
-}
-
-.welcome-card p {
-  margin: 0;
-  opacity: 0.9;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
   margin-bottom: 2rem;
 }
 
 .stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-purple) 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-base);
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light);
 }
 
 .stat-card h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 500;
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .stat-number {
   margin: 0;
   font-size: 2.5rem;
-  font-weight: 700;
-  color: #667eea;
-}
-
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.action-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  text-align: center;
-}
-
-.action-card:not(:disabled):hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.action-card:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.action-card h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
-}
-
-.action-card p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.top-section {
-  margin-bottom: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .sync-section {
-  margin-top: 1.5rem;
   text-align: center;
+  padding: 2rem;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
 }
 
 .btn-sync {
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
 .btn-sync:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
 }
 
 .btn-sync:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .sync-message {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
+  margin-top: 1.25rem;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.938rem;
+  animation: slideUp 0.3s ease;
 }
 
 .sync-message.success {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .sync-message.error {
-  background: #ffebee;
-  color: #c62828;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .orders-section {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
+  animation: slideUp 0.5s ease 0.1s backwards;
 }
 
 .orders-section h2 {
   margin-bottom: 1.5rem;
-  color: #333;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .loading,
 .empty-state {
   text-align: center;
-  padding: 3rem;
-  color: #666;
+  padding: 4rem 1rem;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
 }
 
 .empty-state .hint {
-  color: #999;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: 0.938rem;
+  margin-top: 0.75rem;
 }
 
 .error-message {
-  background: #ffebee;
-  color: #c62828;
-  padding: 1rem;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+  color: var(--error);
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
   text-align: center;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-weight: 500;
 }
 
 .orders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
 @media (max-width: 768px) {
   .dashboard-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.125rem;
+    width: 100%;
+  }
+
+  .user-info {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 0.813rem;
   }
 
   .dashboard-content {
@@ -384,10 +438,36 @@ function handleLogout() {
 
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+  }
+
+  .btn-sync {
+    width: 100%;
+    padding: 1rem;
   }
 
   .orders-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .user-info > button {
+    width: 100%;
   }
 }
 </style>

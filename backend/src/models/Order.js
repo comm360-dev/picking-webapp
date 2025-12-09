@@ -65,6 +65,32 @@ class Order {
     return result.rows[0];
   }
 
+  static async startPicking(orderId, userId) {
+    const result = await pool.query(
+      `UPDATE orders
+       SET status = 'processing', started_at = CURRENT_TIMESTAMP, prepared_by = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [userId, orderId]
+    );
+    return result.rows[0];
+  }
+
+  static async completePicking(orderId, userId) {
+    const result = await pool.query(
+      `UPDATE orders
+       SET status = 'completed',
+           completed_at = CURRENT_TIMESTAMP,
+           picking_duration = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))::INTEGER,
+           prepared_by = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [userId, orderId]
+    );
+    return result.rows[0];
+  }
+
   static async markAsSynced(orderId) {
     const result = await pool.query(
       'UPDATE orders SET synced = true WHERE id = $1 RETURNING *',
@@ -109,7 +135,7 @@ class Order {
     const order = orderResult.rows[0];
 
     const itemsResult = await pool.query(
-      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code
+      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code, p.image_url
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = $1`,

@@ -17,20 +17,20 @@ class Product {
     return result.rows[0];
   }
 
-  static async create({ wcId, sku, name, price, stockQuantity, location, qrCode }) {
+  static async create({ wcId, sku, name, price, stockQuantity, location, qrCode, imageUrl }) {
     const result = await pool.query(
-      `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [wcId, sku, name, price, stockQuantity, location, qrCode]
+      [wcId, sku, name, price, stockQuantity, location, qrCode, imageUrl]
     );
     return result.rows[0];
   }
 
-  static async upsert({ wcId, sku, name, price, stockQuantity, location, qrCode }) {
+  static async upsert({ wcId, sku, name, price, stockQuantity, location, qrCode, imageUrl }) {
     const result = await pool.query(
-      `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (wc_id)
        DO UPDATE SET
          sku = EXCLUDED.sku,
@@ -39,9 +39,10 @@ class Product {
          stock_quantity = EXCLUDED.stock_quantity,
          location = EXCLUDED.location,
          qr_code = EXCLUDED.qr_code,
+         image_url = EXCLUDED.image_url,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [wcId, sku, name, price, stockQuantity, location, qrCode]
+      [wcId, sku, name, price, stockQuantity, location, qrCode, imageUrl]
     );
     return result.rows[0];
   }
@@ -94,32 +95,36 @@ class Product {
       const insertedProducts = [];
 
       for (const product of products) {
-        // Ignorer les produits sans SKU ou générer un SKU par défaut
-        const sku = product.sku || `PRODUCT-${product.id}`;
+        // Utiliser wc_id au lieu de id
+        const wcId = product.wc_id || product.id;
+        const sku = product.sku || `PRODUCT-${wcId}`;
 
         // Vérifier si le SKU existe déjà (pour éviter les doublons)
         if (!product.sku) {
-          console.warn(`⚠️  Produit ${product.id} sans SKU, génération automatique: ${sku}`);
+          console.warn(`⚠️  Produit WC ID ${wcId} sans SKU, génération automatique: ${sku}`);
         }
 
         const result = await client.query(
-          `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (wc_id)
            DO UPDATE SET
              sku = EXCLUDED.sku,
              name = EXCLUDED.name,
              price = EXCLUDED.price,
              stock_quantity = EXCLUDED.stock_quantity,
+             image_url = EXCLUDED.image_url,
              updated_at = CURRENT_TIMESTAMP
            RETURNING *`,
           [
-            product.id,
+            wcId,
             sku,
             product.name,
-            product.price,
-            product.stock_quantity,
-            product.location || null
+            product.price || 0,
+            product.stock_quantity || 0,
+            product.location || null,
+            product.qr_code || null,
+            product.image_url || null
           ]
         );
         insertedProducts.push(result.rows[0]);

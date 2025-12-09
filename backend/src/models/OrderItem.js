@@ -13,7 +13,7 @@ class OrderItem {
 
   static async getByOrderId(orderId) {
     const result = await pool.query(
-      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code
+      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code, p.image_url
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = $1`,
@@ -29,6 +29,17 @@ class OrderItem {
        WHERE id = $2
        RETURNING *`,
       [pickedQuantity, itemId]
+    );
+    return result.rows[0];
+  }
+
+  static async markAsMissing(itemId, notes) {
+    const result = await pool.query(
+      `UPDATE order_items
+       SET is_missing = true, notes = $1, is_picked = false
+       WHERE id = $2
+       RETURNING *`,
+      [notes, itemId]
     );
     return result.rows[0];
   }
@@ -61,17 +72,20 @@ class OrderItem {
         } else {
           console.warn(`  ⚠️  Produit non trouvé pour item: ${item.name} (product_id=${item.product_id})`);
           // Créer le produit s'il n'existe pas
+          const imageUrl = item.image && item.image.src ? item.image.src : null;
+          console.log(`  📸 Image pour ${item.name}: ${imageUrl ? 'OUI (' + imageUrl.substring(0, 50) + '...)' : 'NON (item.image=' + JSON.stringify(item.image) + ')'}`);
           const newProduct = await client.query(
-            `INSERT INTO products (wc_id, sku, name, price, stock_quantity)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (wc_id) DO UPDATE SET name = EXCLUDED.name
+            `INSERT INTO products (wc_id, sku, name, price, stock_quantity, image_url)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (wc_id) DO UPDATE SET name = EXCLUDED.name, image_url = EXCLUDED.image_url
              RETURNING *`,
             [
               item.product_id,
               item.sku || `PRODUCT-${item.product_id}`,
               item.name,
               item.price || 0,
-              0
+              0,
+              imageUrl
             ]
           );
 

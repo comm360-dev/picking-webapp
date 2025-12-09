@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const wooCommerceService = require('../services/woocommerceService');
 
 class ProductController {
   static async getAllProducts(req, res) {
@@ -12,6 +13,55 @@ class ProductController {
     } catch (error) {
       console.error('Erreur getAllProducts:', error);
       res.status(500).json({ message: 'Erreur serveur' });
+    }
+  }
+
+  static async syncAllProducts(req, res) {
+    try {
+      console.log('🔄 Début de la synchronisation complète des produits WooCommerce...');
+
+      // Récupérer TOUS les produits depuis WooCommerce
+      const wcProducts = await wooCommerceService.getAllProducts();
+
+      console.log(`📦 ${wcProducts.length} produits à synchroniser`);
+
+      // Transformer les produits WooCommerce pour notre format
+      const productsData = wcProducts.map(wcProduct => {
+        const wcImageUrl = wcProduct.images && wcProduct.images.length > 0 ? wcProduct.images[0].src : null;
+        // Convertir l'URL WooCommerce en URL proxy pour éviter CORS/Mixed Content
+        const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
+
+        return {
+          wc_id: wcProduct.id,
+          name: wcProduct.name,
+          sku: wcProduct.sku || `PRODUCT-${wcProduct.id}`,
+          price: parseFloat(wcProduct.price || 0),
+          stock_quantity: wcProduct.stock_quantity || 0,
+          location: null,
+          qr_code: null,
+          image_url: imageUrl
+        };
+      });
+
+      // Insérer/Mettre à jour en base de données
+      await Product.bulkUpsert(productsData);
+
+      // Récupérer tous les produits depuis la DB pour les retourner
+      const products = await Product.getAll();
+
+      console.log('✅ Synchronisation des produits terminée');
+
+      res.json({
+        message: `${wcProducts.length} produits synchronisés avec succès`,
+        products,
+        count: products.length
+      });
+    } catch (error) {
+      console.error('Erreur syncAllProducts:', error);
+      res.status(500).json({
+        message: 'Erreur lors de la synchronisation des produits',
+        error: error.message
+      });
     }
   }
 

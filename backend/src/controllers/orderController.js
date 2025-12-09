@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const OrderItem = require('../models/OrderItem');
 const Product = require('../models/Product');
+const History = require('../models/History');
 const woocommerceService = require('../services/woocommerceService');
 
 class OrderController {
@@ -10,7 +11,26 @@ class OrderController {
 
       // Récupérer les produits depuis WooCommerce
       const wcProducts = await woocommerceService.getProducts();
-      const products = await Product.bulkUpsert(wcProducts);
+      console.log(`📥 ${wcProducts.length} produits récupérés depuis WooCommerce`);
+
+      // Transformer les produits pour inclure l'image
+      const productsData = wcProducts.map(wcProduct => {
+        const wcImageUrl = wcProduct.images && wcProduct.images.length > 0 ? wcProduct.images[0].src : null;
+        // Convertir l'URL WooCommerce en URL proxy pour éviter CORS/Mixed Content
+        const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
+        console.log(`🖼️  Produit ${wcProduct.id} (${wcProduct.name}): image = ${imageUrl ? 'PROXY' : 'NON'}`);
+        return {
+          wc_id: wcProduct.id,
+          name: wcProduct.name,
+          sku: wcProduct.sku || `PRODUCT-${wcProduct.id}`,
+          price: parseFloat(wcProduct.price || 0),
+          stock_quantity: wcProduct.stock_quantity || 0,
+          location: null,
+          qr_code: null,
+          image_url: imageUrl
+        };
+      });
+      const products = await Product.bulkUpsert(productsData);
       console.log(`✅ ${products.length} produits synchronisés`);
 
       // Récupérer les commandes depuis WooCommerce
@@ -102,15 +122,69 @@ class OrderController {
     }
   }
 
+  static async startOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const order = await Order.startPicking(id, userId);
+
+      if (!order) {
+        return res.status(404).json({ message: 'Commande non trouvée' });
+      }
+
+      // Enregistrer dans l'historique
+      await History.create({
+        orderId: parseInt(id),
+        userId,
+        action: 'started',
+        details: {
+          orderNumber: order.order_number,
+          customerName: order.customer_name
+        }
+      });
+
+      res.json({
+        message: 'Picking démarré',
+        order
+      });
+    } catch (error) {
+      console.error('Erreur startOrder:', error);
+      res.status(500).json({ message: 'Erreur serveur' });
+    }
+  }
+
   static async completeOrder(req, res) {
     try {
       const { id } = req.params;
       const userId = req.user.id;
 
-      const order = await Order.markAsPicked(id, userId);
+      const order = await Order.completePicking(id, userId);
 
       if (!order) {
         return res.status(404).json({ message: 'Commande non trouvée' });
+      }
+
+      // Enregistrer dans l'historique
+      await History.create({
+        orderId: parseInt(id),
+        userId,
+        action: 'completed',
+        details: {
+          orderNumber: order.order_number,
+          customerName: order.customer_name,
+          duration: order.picking_duration
+        }
+      });
+
+      // Mettre à jour le statut sur WooCommerce
+      try {
+        console.log(`🔄 Mise à jour du statut WooCommerce pour la commande #${order.wc_id}...`);
+        await woocommerceService.updateOrderStatus(order.wc_id, 'completed');
+        console.log(`✅ Statut WooCommerce mis à jour pour la commande #${order.wc_id}`);
+      } catch (wcError) {
+        console.error('⚠️  Erreur lors de la mise à jour WooCommerce:', wcError.message);
+        // On continue même si la mise à jour WooCommerce échoue
       }
 
       res.json({
@@ -125,3 +199,4 @@ class OrderController {
 }
 
 module.exports = OrderController;
+

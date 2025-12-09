@@ -7,6 +7,7 @@ const { authMiddleware, isAdmin } = require('../middleware/auth');
 router.use(authMiddleware);
 
 router.get('/', ProductController.getAllProducts);
+router.post('/sync', isAdmin, ProductController.syncAllProducts);
 router.get('/sku/:sku', ProductController.searchBySKU);
 router.put('/:id', isAdmin, ProductController.updateProduct);
 router.put('/:id/qr', isAdmin, ProductController.updateQRCode);

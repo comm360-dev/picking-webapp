@@ -154,6 +154,44 @@ class WooCommerceService {
     }
   }
 
+  async getAllProducts() {
+    if (this.useMockData) {
+      console.log('📦 Récupération de TOUS les produits mockés');
+      return MOCK_PRODUCTS;
+    }
+
+    try {
+      let allProducts = [];
+      let page = 1;
+      let hasMore = true;
+
+      console.log('📦 Début de la synchronisation de TOUS les produits WooCommerce...');
+
+      while (hasMore) {
+        const response = await this.api.get('products', {
+          per_page: 100, // Maximum autorisé par WooCommerce
+          page: page
+        });
+
+        const products = response.data;
+        allProducts = allProducts.concat(products);
+
+        console.log(`  ✓ Page ${page}: ${products.length} produits récupérés`);
+
+        // Vérifier s'il y a encore des pages
+        const totalPages = parseInt(response.headers['x-wp-totalpages'] || '1');
+        hasMore = page < totalPages;
+        page++;
+      }
+
+      console.log(`✅ Total: ${allProducts.length} produits récupérés depuis WooCommerce`);
+      return allProducts;
+    } catch (error) {
+      console.error('Erreur WooCommerce getAllProducts:', error);
+      throw error;
+    }
+  }
+
   async getOrders(params = { status: 'processing,pending' }) {
     if (this.useMockData) {
       console.log('📋 Récupération des commandes mockées');
