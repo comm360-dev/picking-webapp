@@ -114,14 +114,14 @@ class SyncService {
         break
 
       case 'mark_picked':
-        await api.put(`/orders/${data.orderId}/items/${data.itemId}/picked`, {
+        await api.put(`/orders/${data.orderId}/items/${data.itemId}/pick`, {
           pickedQuantity: data.quantity
         })
         break
 
       case 'mark_missing':
         await api.put(`/orders/${data.orderId}/items/${data.itemId}/missing`, {
-          missingQuantity: data.quantity
+          notes: data.notes || 'Produit manquant'
         })
         break
 
@@ -159,8 +159,8 @@ class SyncService {
     await this.queueAction('mark_picked', { orderId, itemId, quantity })
   }
 
-  async markItemMissing(orderId, itemId, quantity) {
-    await this.queueAction('mark_missing', { orderId, itemId, quantity })
+  async markItemMissing(orderId, itemId, notes) {
+    await this.queueAction('mark_missing', { orderId, itemId, notes })
   }
 
   async completeOrder(orderId) {
