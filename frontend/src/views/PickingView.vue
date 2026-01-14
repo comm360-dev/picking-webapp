@@ -348,6 +348,7 @@ async function markItemAsPicked(item) {
   try {
     const newPickedQty = (item.picked_quantity || 0) + 1
     const isPicked = newPickedQty >= item.quantity
+    const orderId = parseInt(route.params.id)
 
     // Mode offline-first : mettre à jour localement d'abord
     item.picked_quantity = newPickedQty
@@ -359,30 +360,28 @@ async function markItemAsPicked(item) {
       is_picked: isPicked
     })
 
-    // Ajouter à la queue de synchronisation
-    await syncService.markItemPicked(order.value.id, item.id, newPickedQty)
+    // Ajouter à la queue de synchronisation (utilise l'ID de la route, pas order.value.id)
+    await syncService.markItemPicked(orderId, item.id, newPickedQty)
 
-    // Si online, tenter la mise à jour immédiate sur l'API
-    if (syncService.isOnline()) {
-      try {
-        await api.put(`/orders/${order.value.id}/items/${item.id}/pick`, {
-          pickedQuantity: newPickedQty
-        })
-      } catch (apiErr) {
-        console.warn('API indisponible, les données seront synchronisées plus tard:', apiErr)
-      }
-    }
-
+    // Feedback immédiat - le scan est validé localement
     feedbackService.success()
     showFeedback('✅ Article scanné avec succès !', 'success')
 
     currentItemId.value = null
     manualSku.value = ''
 
-    // Recharger depuis le cache local (pas besoin de l'API)
-    const orderId = parseInt(route.params.id)
+    // Recharger depuis le cache local
     const cachedItems = await orderItemsDB.where('order_id').equals(orderId).toArray()
     order.value.items = cachedItems
+
+    // Tenter la sync API en arrière-plan (non bloquant)
+    if (syncService.isOnline()) {
+      api.put(`/orders/${orderId}/items/${item.id}/pick`, {
+        pickedQuantity: newPickedQty
+      }).catch(apiErr => {
+        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
+      })
+    }
   } catch (err) {
     console.error('Erreur markItemAsPicked:', err)
     feedbackService.error()
@@ -440,38 +439,38 @@ async function confirmMissing() {
 
   try {
     const notes = missingNotes.value || 'Produit manquant'
+    const orderId = parseInt(route.params.id)
+    const itemId = missingItem.value.id
 
     // Mode offline-first : mettre à jour localement d'abord
     missingItem.value.is_missing = true
     missingItem.value.notes = notes
 
     // Sauvegarder dans IndexedDB
-    await orderItemsDB.update(missingItem.value.id, {
+    await orderItemsDB.update(itemId, {
       is_missing: true,
       notes: notes
     })
 
-    // Ajouter à la queue de synchronisation
-    await syncService.markItemMissing(order.value.id, missingItem.value.id, notes)
+    // Ajouter à la queue de synchronisation (utilise l'ID de la route)
+    await syncService.markItemMissing(orderId, itemId, notes)
 
-    // Si online, tenter la mise à jour immédiate sur l'API
-    if (syncService.isOnline()) {
-      try {
-        await api.put(`/orders/${order.value.id}/items/${missingItem.value.id}/missing`, {
-          notes: notes
-        })
-      } catch (apiErr) {
-        console.warn('API indisponible, les données seront synchronisées plus tard:', apiErr)
-      }
-    }
-
+    // Feedback immédiat
     showFeedback('⚠️ Produit marqué comme manquant', 'error')
     closeMissingModal()
 
     // Recharger depuis le cache local
-    const orderId = parseInt(route.params.id)
     const cachedItems = await orderItemsDB.where('order_id').equals(orderId).toArray()
     order.value.items = cachedItems
+
+    // Tenter la sync API en arrière-plan (non bloquant)
+    if (syncService.isOnline()) {
+      api.put(`/orders/${orderId}/items/${itemId}/missing`, {
+        notes: notes
+      }).catch(apiErr => {
+        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
+      })
+    }
   } catch (err) {
     console.error('Erreur confirmMissing:', err)
     showFeedback('❌ Erreur lors de la mise à jour', 'error')
