@@ -13,8 +13,8 @@
             <button @click="syncProducts" class="btn-sync" :disabled="syncing">
               {{ syncing ? '⏳ Synchronisation...' : '🔄 Sync WooCommerce' }}
             </button>
-            <button @click="generateAllQR" class="btn-generate">
-              🔄 Générer QR pour tous
+            <button @click="generateAllQR" class="btn-generate" :disabled="generatingAll">
+              {{ generatingAll ? `⏳ ${generationProgress.current}/${generationProgress.total}...` : '🔄 Générer QR pour tous' }}
             </button>
             <button @click="printAllQR" class="btn-print" :disabled="!hasQRCodes">
               🖨️ Imprimer tous les QR
@@ -155,7 +155,7 @@ async function loadProducts() {
   }
 }
 
-async function generateQR(product) {
+async function generateQR(product, showAlert = true) {
   try {
     // Générer un QR code basé sur le SKU
     const qrCode = `QR-${product.sku}`
@@ -169,25 +169,58 @@ async function generateQR(product) {
     await nextTick()
     renderQRCode(product)
 
-    alert(`QR Code généré: ${qrCode}`)
+    if (showAlert) {
+      alert(`QR Code généré: ${qrCode}`)
+    }
+    return true
   } catch (error) {
     console.error('Erreur génération QR:', error)
-    alert('Erreur lors de la génération du QR code')
+    if (showAlert) {
+      alert('Erreur lors de la génération du QR code')
+    }
+    return false
   }
 }
 
+const generatingAll = ref(false)
+const generationProgress = ref({ current: 0, total: 0 })
+
 async function generateAllQR() {
-  if (!confirm('Générer des QR codes pour tous les produits sans QR ?')) {
+  const productsWithoutQR = products.value.filter(p => !p.qr_code)
+
+  if (productsWithoutQR.length === 0) {
+    alert('Tous les produits ont déjà un QR code !')
     return
   }
 
-  for (const product of products.value) {
-    if (!product.qr_code) {
-      await generateQR(product)
-    }
+  if (!confirm(`Générer ${productsWithoutQR.length} QR codes pour les produits sans QR ?`)) {
+    return
   }
 
-  alert('QR codes générés pour tous les produits !')
+  generatingAll.value = true
+  generationProgress.value = { current: 0, total: productsWithoutQR.length }
+
+  let successCount = 0
+  let errorCount = 0
+
+  for (const product of productsWithoutQR) {
+    const success = await generateQR(product, false) // false = pas d'alerte individuelle
+    if (success) {
+      successCount++
+    } else {
+      errorCount++
+    }
+    generationProgress.value.current++
+  }
+
+  generatingAll.value = false
+
+  // Un seul message récapitulatif à la fin
+  if (errorCount === 0) {
+    alert(`✅ ${successCount} QR codes générés avec succès !`)
+  } else {
+    alert(`${successCount} QR codes générés, ${errorCount} erreurs`)
+  }
 }
 
 async function updateProduct(product) {
@@ -595,6 +628,16 @@ function goBack() {
   border-radius: var(--radius-md);
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn-generate:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .btn-print {
