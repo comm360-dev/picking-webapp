@@ -15,7 +15,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
       manifest: {
         name: 'Retro Car Concept Picking',
-        short_name: 'RCC Picking',
+        short_name: 'R2C Picking',
         description: 'Retro Car Concept - Application de préparation de commandes',
         theme_color: '#0CB4D4',
         background_color: '#FFFFFF',
