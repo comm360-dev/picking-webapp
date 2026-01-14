@@ -123,4 +123,86 @@ router.get('/fix-image-urls', async (req, res) => {
   }
 });
 
+// Route pour créer la table order_history si elle n'existe pas
+router.get('/add-history-table', async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS order_history (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(50) NOT NULL,
+        details JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Ajouter des index pour les requêtes fréquentes
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_order_history_order_id ON order_history(order_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_order_history_user_id ON order_history(user_id)
+    `);
+
+    res.json({
+      success: true,
+      message: 'Table order_history créée avec succès'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Route pour ajouter les colonnes manquantes sur order_items
+router.get('/fix-order-items', async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE order_items
+      ADD COLUMN IF NOT EXISTS is_missing BOOLEAN DEFAULT false
+    `);
+    await pool.query(`
+      ALTER TABLE order_items
+      ADD COLUMN IF NOT EXISTS notes TEXT
+    `);
+
+    res.json({
+      success: true,
+      message: 'Colonnes is_missing et notes ajoutées à order_items'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Route pour ajouter les colonnes picking sur orders
+router.get('/fix-orders-table', async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS picking_duration INTEGER
+    `);
+    await pool.query(`
+      ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS picking_started_at TIMESTAMP
+    `);
+
+    res.json({
+      success: true,
+      message: 'Colonnes picking_duration et picking_started_at ajoutées à orders'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
