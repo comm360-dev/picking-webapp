@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-container">
     <header class="dashboard-header">
-      <h1>Dashboard - Picking WebApp</h1>
+      <img src="/logo/logo.svg" alt="Retro Car Concept" class="header-logo" />
       <div class="user-info">
         <span>{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</span>
         <span class="role-badge" :class="authStore.user?.role">{{ authStore.user?.role }}</span>
@@ -152,15 +152,9 @@ function handleLogout() {
   backdrop-filter: blur(10px);
 }
 
-.dashboard-header h1 {
-  font-size: 1.5rem;
-  color: var(--text-primary);
-  margin: 0;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.header-logo {
+  height: 40px;
+  width: auto;
 }
 
 .user-info {
@@ -182,7 +176,7 @@ function handleLogout() {
   letter-spacing: 1px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 2px 8px rgba(12, 180, 212, 0.2);
 }
 
 .role-badge.admin {
@@ -190,7 +184,7 @@ function handleLogout() {
 }
 
 .role-badge.preparateur {
-  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--primary) 100%);
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
 }
 
 .btn-history, .btn-admin, .btn-logout {
@@ -205,7 +199,7 @@ function handleLogout() {
 }
 
 .btn-history {
-  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
 }
 
@@ -281,7 +275,7 @@ function handleLogout() {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--transition-base);
@@ -310,7 +304,7 @@ function handleLogout() {
   margin: 0;
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -327,7 +321,7 @@ function handleLogout() {
 
 .btn-sync {
   padding: 1rem 2.5rem;
-  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -337,12 +331,12 @@ function handleLogout() {
   transition: all var(--transition-base);
   text-transform: uppercase;
   letter-spacing: 1px;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.3);
 }
 
 .btn-sync:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 24px rgba(12, 180, 212, 0.4);
 }
 
 .btn-sync:disabled {
@@ -361,9 +355,9 @@ function handleLogout() {
 }
 
 .sync-message.success {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
-  color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(153, 207, 181, 0.15) 0%, rgba(12, 180, 212, 0.1) 100%);
+  color: var(--secondary-dark);
+  border: 1px solid rgba(153, 207, 181, 0.4);
 }
 
 .sync-message.error {
@@ -421,9 +415,10 @@ function handleLogout() {
     padding: 1rem;
   }
 
-  .dashboard-header h1 {
-    font-size: 1.125rem;
+  .header-logo {
+    height: 32px;
     width: 100%;
+    max-width: 200px;
   }
 
   .user-info {

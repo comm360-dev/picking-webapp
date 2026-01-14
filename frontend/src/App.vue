@@ -24,18 +24,19 @@ onMounted(async () => {
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Palette moderne inspirée de l'image */
-  --primary: #6366F1;
-  --primary-light: #818CF8;
-  --primary-dark: #4F46E5;
-  --secondary: #EC4899;
-  --secondary-light: #F472B6;
+  /* Retro Car Concept Picking - Palette de couleurs */
+  --primary: #0CB4D4;
+  --primary-light: #3DC8E3;
+  --primary-dark: #0A9AB8;
+  --secondary: #99CFB5;
+  --secondary-light: #B3DCC7;
+  --secondary-dark: #7CBD9E;
 
-  --accent-purple: #A78BFA;
-  --accent-pink: #F9A8D4;
+  --accent-teal: #0CB4D4;
+  --accent-mint: #99CFB5;
   --accent-blue: #60A5FA;
 
-  --success: #10B981;
+  --success: #99CFB5;
   --warning: #F59E0B;
   --error: #EF4444;
 
@@ -50,9 +51,9 @@ onMounted(async () => {
   --border: #E2E8F0;
   --border-light: #F1F5F9;
 
-  --shadow-sm: 0 2px 8px rgba(99, 102, 241, 0.08);
-  --shadow-md: 0 4px 16px rgba(99, 102, 241, 0.12);
-  --shadow-lg: 0 8px 32px rgba(99, 102, 241, 0.16);
+  --shadow-sm: 0 2px 8px rgba(12, 180, 212, 0.08);
+  --shadow-md: 0 4px 16px rgba(12, 180, 212, 0.12);
+  --shadow-lg: 0 8px 32px rgba(12, 180, 212, 0.16);
 
   --radius-sm: 12px;
   --radius-md: 16px;

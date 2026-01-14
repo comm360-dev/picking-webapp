@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h1>Picking WebApp</h1>
+      <img src="/logo/logo.svg" alt="Retro Car Concept" class="login-logo" />
       <h2>Connexion</h2>
 
       <form @submit.prevent="handleLogin">
@@ -70,10 +70,18 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 50%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   padding: 1rem;
   position: relative;
   overflow: hidden;
+}
+
+.login-logo {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto 1.5rem auto;
 }
 
 .login-container::before {
@@ -117,17 +125,6 @@ async function handleLogin() {
   }
 }
 
-h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  text-align: center;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 h2 {
   font-size: 1.125rem;
   color: var(--text-secondary);
@@ -167,7 +164,7 @@ input:focus {
   outline: none;
   border-color: var(--primary);
   background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 3px rgba(12, 180, 212, 0.15);
   transform: translateY(-1px);
 }
 
@@ -192,7 +189,7 @@ input:focus {
 .btn-primary {
   width: 100%;
   padding: 1.125rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -200,14 +197,14 @@ input:focus {
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.3);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 24px rgba(12, 180, 212, 0.4);
 }
 
 .btn-primary:disabled {
@@ -238,12 +235,12 @@ input:focus {
   left: 0;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
   transition: width var(--transition-fast);
 }
 
 .register-link a:hover {
-  color: var(--accent-purple);
+  color: var(--secondary);
 }
 
 .register-link a:hover::after {
@@ -255,8 +252,8 @@ input:focus {
     padding: 2rem 1.5rem;
   }
 
-  h1 {
-    font-size: 1.5rem;
+  .login-logo {
+    max-width: 220px;
   }
 
   h2 {
