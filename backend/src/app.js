@@ -8,6 +8,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const productRoutes = require('./routes/productRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const imageProxyRoutes = require('./routes/imageProxyRoutes');
+const setupRoutes = require('./routes/setupRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/image-proxy', imageProxyRoutes);
+app.use('/api/setup', setupRoutes);
 
 // Servir les fichiers statiques du frontend en production
 if (process.env.NODE_ENV === 'production') {
