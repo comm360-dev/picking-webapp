@@ -350,29 +350,25 @@ async function markItemAsPicked(item) {
     const isPicked = newPickedQty >= item.quantity
     const orderId = parseInt(route.params.id)
 
-    // Mode offline-first : mettre à jour localement d'abord
+    // Mode offline-first : mettre à jour en mémoire (l'affichage se met à jour automatiquement)
     item.picked_quantity = newPickedQty
     item.is_picked = isPicked
 
-    // Sauvegarder dans IndexedDB
+    // Sauvegarder dans IndexedDB pour persistance offline
     await orderItemsDB.update(item.id, {
       picked_quantity: newPickedQty,
       is_picked: isPicked
     })
 
-    // Ajouter à la queue de synchronisation (utilise l'ID de la route, pas order.value.id)
+    // Ajouter à la queue de synchronisation
     await syncService.markItemPicked(orderId, item.id, newPickedQty)
 
-    // Feedback immédiat - le scan est validé localement
+    // Feedback immédiat
     feedbackService.success()
     showFeedback('✅ Article scanné avec succès !', 'success')
 
     currentItemId.value = null
     manualSku.value = ''
-
-    // Recharger depuis le cache local
-    const cachedItems = await orderItemsDB.where('order_id').equals(orderId).toArray()
-    order.value.items = cachedItems
 
     // Tenter la sync API en arrière-plan (non bloquant)
     if (syncService.isOnline()) {
@@ -442,26 +438,22 @@ async function confirmMissing() {
     const orderId = parseInt(route.params.id)
     const itemId = missingItem.value.id
 
-    // Mode offline-first : mettre à jour localement d'abord
+    // Mode offline-first : mettre à jour en mémoire (l'affichage se met à jour automatiquement)
     missingItem.value.is_missing = true
     missingItem.value.notes = notes
 
-    // Sauvegarder dans IndexedDB
+    // Sauvegarder dans IndexedDB pour persistance offline
     await orderItemsDB.update(itemId, {
       is_missing: true,
       notes: notes
     })
 
-    // Ajouter à la queue de synchronisation (utilise l'ID de la route)
+    // Ajouter à la queue de synchronisation
     await syncService.markItemMissing(orderId, itemId, notes)
 
     // Feedback immédiat
     showFeedback('⚠️ Produit marqué comme manquant', 'error')
     closeMissingModal()
-
-    // Recharger depuis le cache local
-    const cachedItems = await orderItemsDB.where('order_id').equals(orderId).toArray()
-    order.value.items = cachedItems
 
     // Tenter la sync API en arrière-plan (non bloquant)
     if (syncService.isOnline()) {
