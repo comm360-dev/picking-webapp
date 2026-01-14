@@ -64,4 +64,23 @@ router.get('/status', async (req, res) => {
   }
 });
 
+// Route pour ajouter la colonne image_url si elle n'existe pas
+router.get('/add-image-column', async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS image_url TEXT
+    `);
+    res.json({
+      success: true,
+      message: 'Colonne image_url ajoutée avec succès'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
