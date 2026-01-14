@@ -213,8 +213,32 @@ class WooCommerceService {
     }
 
     try {
-      const response = await this.api.get('orders', params);
-      return response.data;
+      // Récupérer toutes les commandes avec pagination
+      let allOrders = [];
+      let page = 1;
+      let hasMore = true;
+
+      console.log('📋 Récupération de toutes les commandes WooCommerce...');
+
+      while (hasMore) {
+        const response = await this.api.get('orders', {
+          ...params,
+          per_page: 100, // Maximum autorisé par WooCommerce
+          page: page
+        });
+
+        const orders = response.data;
+        allOrders = allOrders.concat(orders);
+        console.log(`  ✓ Page ${page}: ${orders.length} commandes récupérées`);
+
+        // Vérifier s'il y a encore des pages
+        const totalPages = parseInt(response.headers['x-wp-totalpages'] || '1');
+        hasMore = page < totalPages;
+        page++;
+      }
+
+      console.log(`📋 Total: ${allOrders.length} commandes récupérées`);
+      return allOrders;
     } catch (error) {
       console.error('Erreur WooCommerce getOrders:', error);
       throw error;
