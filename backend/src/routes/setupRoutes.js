@@ -198,7 +198,7 @@ router.get('/create-preparateur', async (req, res) => {
     // Créer le compte
     const passwordHash = await bcrypt.hash('preparateur123', 10);
     await pool.query(
-      'INSERT INTO users (email, password_hash, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5)',
+      'INSERT INTO users (email, password, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5)',
       ['preparateur@picking.com', passwordHash, 'preparateur', 'Jean', 'Dupont']
     );
 
