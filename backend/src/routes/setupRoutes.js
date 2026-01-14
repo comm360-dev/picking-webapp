@@ -184,18 +184,15 @@ router.get('/fix-order-items', async (req, res) => {
 // Route pour ajouter les colonnes picking sur orders
 router.get('/fix-orders-table', async (req, res) => {
   try {
-    await pool.query(`
-      ALTER TABLE orders
-      ADD COLUMN IF NOT EXISTS picking_duration INTEGER
-    `);
-    await pool.query(`
-      ALTER TABLE orders
-      ADD COLUMN IF NOT EXISTS picking_started_at TIMESTAMP
-    `);
+    // Colonnes pour le picking
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS picking_duration INTEGER`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS prepared_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
 
     res.json({
       success: true,
-      message: 'Colonnes picking_duration et picking_started_at ajoutées à orders'
+      message: 'Colonnes picking ajoutées à orders (picking_duration, started_at, completed_at, prepared_by)'
     });
   } catch (error) {
     res.status(500).json({
