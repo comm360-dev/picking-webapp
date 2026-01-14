@@ -72,8 +72,10 @@ class OrderItem {
         } else {
           console.warn(`  ⚠️  Produit non trouvé pour item: ${item.name} (product_id=${item.product_id})`);
           // Créer le produit s'il n'existe pas
-          const imageUrl = item.image && item.image.src ? item.image.src : null;
-          console.log(`  📸 Image pour ${item.name}: ${imageUrl ? 'OUI (' + imageUrl.substring(0, 50) + '...)' : 'NON (item.image=' + JSON.stringify(item.image) + ')'}`);
+          const wcImageUrl = item.image && item.image.src ? item.image.src : null;
+          // Convertir en URL proxy pour éviter CORS/Mixed Content
+          const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
+          console.log(`  📸 Image pour ${item.name}: ${imageUrl ? 'PROXY' : 'NON'}`);
           const newProduct = await client.query(
             `INSERT INTO products (wc_id, sku, name, price, stock_quantity, image_url)
              VALUES ($1, $2, $3, $4, $5, $6)
