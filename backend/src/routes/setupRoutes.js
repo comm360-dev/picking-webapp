@@ -83,4 +83,44 @@ router.get('/add-image-column', async (req, res) => {
   }
 });
 
+// Route pour vérifier les URLs des images dans la base
+router.get('/check-images', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name, image_url FROM products LIMIT 5');
+    res.json({
+      success: true,
+      products: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Route pour corriger les URLs des images (convertir en proxy)
+router.get('/fix-image-urls', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      UPDATE products
+      SET image_url = '/api/image-proxy?url=' || encode(convert_to(image_url, 'UTF8'), 'escape')
+      WHERE image_url IS NOT NULL
+        AND image_url NOT LIKE '/api/image-proxy%'
+        AND image_url LIKE 'http%'
+      RETURNING id, name, image_url
+    `);
+    res.json({
+      success: true,
+      message: `${result.rowCount} URLs corrigées`,
+      updated: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
