@@ -42,8 +42,12 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(frontendPath));
 
   // Toutes les autres routes renvoient index.html (pour le routing Vue)
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    } else {
+      next();
+    }
   });
 }
 
