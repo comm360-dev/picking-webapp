@@ -25,11 +25,23 @@ class OrderItem {
   static async markAsPicked(itemId, pickedQuantity) {
     const result = await pool.query(
       `UPDATE order_items
-       SET picked_quantity = $1, is_picked = (picked_quantity >= quantity)
+       SET picked_quantity = $1, is_picked = ($1 >= quantity)
        WHERE id = $2
        RETURNING *`,
       [pickedQuantity, itemId]
     );
+
+    if (result.rows[0]) {
+      // Récupérer le nom du produit pour l'historique
+      const productResult = await pool.query(
+        `SELECT p.name FROM products p
+         JOIN order_items oi ON oi.product_id = p.id
+         WHERE oi.id = $1`,
+        [itemId]
+      );
+      result.rows[0].name = productResult.rows[0]?.name || 'Produit inconnu';
+    }
+
     return result.rows[0];
   }
 
@@ -41,6 +53,18 @@ class OrderItem {
        RETURNING *`,
       [notes, itemId]
     );
+
+    if (result.rows[0]) {
+      // Récupérer le nom du produit pour l'historique
+      const productResult = await pool.query(
+        `SELECT p.name FROM products p
+         JOIN order_items oi ON oi.product_id = p.id
+         WHERE oi.id = $1`,
+        [itemId]
+      );
+      result.rows[0].name = productResult.rows[0]?.name || 'Produit inconnu';
+    }
+
     return result.rows[0];
   }
 
