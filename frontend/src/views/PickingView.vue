@@ -490,8 +490,9 @@ async function confirmMissing() {
   flex-wrap: wrap;
   box-shadow: var(--shadow-sm);
   position: sticky;
-  top: 0;
+  top: var(--network-banner-height, 0px);
   z-index: 100;
+  transition: top 0.3s ease;
 }
 
 .btn-back {

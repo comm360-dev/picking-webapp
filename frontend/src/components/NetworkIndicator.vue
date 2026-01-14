@@ -1,6 +1,6 @@
 <template>
-  <Transition name="slide">
-    <div v-if="showIndicator" class="network-indicator" :class="indicatorClass">
+  <Transition name="slide" @after-enter="updateBannerHeight" @after-leave="resetBannerHeight">
+    <div v-if="showIndicator" ref="indicatorRef" class="network-indicator" :class="indicatorClass">
       <div class="indicator-content">
         <span class="indicator-icon">{{ icon }}</span>
         <span class="indicator-text">{{ message }}</span>
@@ -14,11 +14,24 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import syncService from '../services/sync'
 
+const indicatorRef = ref(null)
 const isOnline = ref(navigator.onLine)
 const isSyncing = ref(false)
 const syncCount = ref(0)
 const showIndicator = ref(false)
 const hideTimeout = ref(null)
+
+// Mettre à jour la hauteur de la bannière pour les éléments sticky
+function updateBannerHeight() {
+  if (indicatorRef.value) {
+    const height = indicatorRef.value.offsetHeight
+    document.documentElement.style.setProperty('--network-banner-height', `${height}px`)
+  }
+}
+
+function resetBannerHeight() {
+  document.documentElement.style.setProperty('--network-banner-height', '0px')
+}
 
 const indicatorClass = computed(() => {
   if (isSyncing.value) return 'syncing'
@@ -45,6 +58,8 @@ onMounted(() => {
   // Afficher l'indicateur initialement si offline
   if (!isOnline.value) {
     showIndicator.value = true
+    // Mettre à jour la hauteur après le rendu initial
+    setTimeout(() => updateBannerHeight(), 50)
   }
 
   // Écouter les changements de statut réseau
@@ -89,6 +104,8 @@ onUnmounted(() => {
   if (unsubscribeOnline) unsubscribeOnline()
   if (unsubscribeSync) unsubscribeSync()
   clearTimeout(hideTimeout.value)
+  // Remettre la hauteur à 0 quand le composant est détruit
+  resetBannerHeight()
 })
 </script>
 

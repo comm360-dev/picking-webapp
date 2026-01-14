@@ -24,6 +24,9 @@ onMounted(async () => {
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
+  /* Hauteur de la bannière réseau (pour les headers sticky) */
+  --network-banner-height: 0px;
+
   /* Retro Car Concept Picking - Palette de couleurs */
   --primary: #0CB4D4;
   --primary-light: #3DC8E3;
