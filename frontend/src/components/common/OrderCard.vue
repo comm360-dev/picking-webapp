@@ -106,7 +106,7 @@ function formatDate(dateString) {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--transition-base);
@@ -131,7 +131,7 @@ function formatDate(dateString) {
 }
 
 .order-card.status-picking {
-  border-left-color: var(--accent-purple);
+  border-left-color: var(--primary);
 }
 
 .order-card.status-completed {
@@ -163,7 +163,7 @@ function formatDate(dateString) {
 .order-number .number {
   font-size: 1.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -177,7 +177,7 @@ function formatDate(dateString) {
   text-transform: uppercase;
   letter-spacing: 1px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 2px 8px rgba(12, 180, 212, 0.15);
 }
 
 .order-status.pending {
@@ -191,7 +191,7 @@ function formatDate(dateString) {
 }
 
 .order-status.picking {
-  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
 }
 

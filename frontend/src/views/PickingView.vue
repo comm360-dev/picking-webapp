@@ -483,7 +483,7 @@ async function confirmMissing() {
   font-size: 1.25rem;
   margin: 0;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -688,7 +688,7 @@ async function confirmMissing() {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--transition-base);
@@ -712,8 +712,8 @@ async function confirmMissing() {
 .item-card.current {
   border-left-color: var(--primary);
   border-color: var(--primary-light);
-  background: linear-gradient(to right, rgba(99, 102, 241, 0.05) 0%, var(--bg-card) 100%);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
+  background: linear-gradient(to right, rgba(12, 180, 212, 0.05) 0%, var(--bg-card) 100%);
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.15);
 }
 
 .item-header {
@@ -741,7 +741,7 @@ async function confirmMissing() {
 .item-image:hover {
   transform: scale(1.05);
   border-color: var(--primary-light);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 12px rgba(12, 180, 212, 0.15);
 }
 
 .item-image img {
@@ -789,13 +789,13 @@ async function confirmMissing() {
   text-transform: uppercase;
   letter-spacing: 1px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 2px 8px rgba(12, 180, 212, 0.15);
   transition: all var(--transition-fast);
 }
 
 .status-badge:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(12, 180, 212, 0.2);
 }
 
 .status-badge.picked {
@@ -952,7 +952,7 @@ async function confirmMissing() {
 
 .btn-validate {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
@@ -961,13 +961,13 @@ async function confirmMissing() {
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(12, 180, 212, 0.3);
   transition: all var(--transition-fast);
 }
 
 .btn-validate:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 16px rgba(12, 180, 212, 0.4);
 }
 
 .btn-cancel-scan {

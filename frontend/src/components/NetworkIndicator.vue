@@ -122,9 +122,9 @@ onUnmounted(() => {
 }
 
 .network-indicator.syncing {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: white;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.4);
 }
 
 .indicator-content {

@@ -750,7 +750,7 @@ td {
 
 .btn-action:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 8px rgba(12, 180, 212, 0.3);
 }
 
 .btn-action:disabled {
