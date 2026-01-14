@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, 'https://picking-app.onrender.com']
     : true, // En dev, accepte toutes les origines
   credentials: true
 }));
