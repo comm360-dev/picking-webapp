@@ -1,5 +1,11 @@
 const WooCommerceRestApi = require('@woocommerce/woocommerce-rest-api').default;
+const https = require('https');
 require('dotenv').config();
+
+// Créer un agent HTTPS qui accepte les certificats auto-signés
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 // Données mockées pour le développement
 const MOCK_PRODUCTS = [
@@ -131,7 +137,10 @@ class WooCommerceService {
         url: process.env.WC_URL,
         consumerKey: process.env.WC_CONSUMER_KEY,
         consumerSecret: process.env.WC_CONSUMER_SECRET,
-        version: 'wc/v3'
+        version: 'wc/v3',
+        axiosConfig: {
+          httpsAgent: httpsAgent
+        }
       });
       console.log('✅ WooCommerce API configurée');
     } else {
