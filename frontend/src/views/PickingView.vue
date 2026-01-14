@@ -54,7 +54,7 @@
           >
             <div class="item-header">
               <div v-if="item.image_url" class="item-image">
-                <img :src="item.image_url" :alt="item.name" />
+                <img :src="getImageUrl(item.image_url)" :alt="item.name" />
               </div>
               <div class="item-info">
                 <h4>{{ item.name }}</h4>
@@ -185,6 +185,20 @@ import syncService from '../services/sync'
 const router = useRouter()
 const route = useRoute()
 const ordersStore = useOrdersStore()
+
+// URL de base de l'API pour les images proxy
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_BASE = API_URL.replace('/api', '')
+
+// Fonction pour obtenir l'URL complète de l'image
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return null
+  // Si l'URL commence par /api, la préfixer avec l'URL du backend
+  if (imageUrl.startsWith('/api/')) {
+    return API_BASE + imageUrl
+  }
+  return imageUrl
+}
 
 const order = ref(null)
 const loading = ref(true)
