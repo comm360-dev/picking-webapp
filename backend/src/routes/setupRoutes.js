@@ -181,6 +181,44 @@ router.get('/fix-order-items', async (req, res) => {
   }
 });
 
+// Route pour créer le compte préparateur
+router.get('/create-preparateur', async (req, res) => {
+  try {
+    // Vérifier si le compte existe déjà
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', ['preparateur@picking.com']);
+
+    if (existing.rows.length > 0) {
+      return res.json({
+        success: true,
+        message: 'Le compte préparateur existe déjà',
+        email: 'preparateur@picking.com'
+      });
+    }
+
+    // Créer le compte
+    const passwordHash = await bcrypt.hash('preparateur123', 10);
+    await pool.query(
+      'INSERT INTO users (email, password_hash, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5)',
+      ['preparateur@picking.com', passwordHash, 'preparateur', 'Jean', 'Dupont']
+    );
+
+    res.json({
+      success: true,
+      message: 'Compte préparateur créé avec succès',
+      credentials: {
+        email: 'preparateur@picking.com',
+        password: 'preparateur123',
+        role: 'preparateur'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Route pour ajouter les colonnes picking sur orders
 router.get('/fix-orders-table', async (req, res) => {
   try {
