@@ -36,10 +36,6 @@
         </button>
       </form>
 
-      <p class="register-link">
-        Pas encore de compte ?
-        <router-link to="/register">S'inscrire</router-link>
-      </p>
     </div>
   </div>
 </template>
@@ -211,40 +207,6 @@ input:focus {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-}
-
-.register-link {
-  text-align: center;
-  margin-top: 2rem;
-  color: var(--text-secondary);
-  font-size: 0.938rem;
-}
-
-.register-link a {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 700;
-  transition: all var(--transition-fast);
-  position: relative;
-}
-
-.register-link a::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
-  transition: width var(--transition-fast);
-}
-
-.register-link a:hover {
-  color: var(--secondary);
-}
-
-.register-link a:hover::after {
-  width: 100%;
 }
 
 @media (max-width: 480px) {
