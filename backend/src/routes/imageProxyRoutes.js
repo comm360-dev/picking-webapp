@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const https = require('https');
+
+// Agent HTTPS qui accepte les certificats auto-signés
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 // Proxy pour charger les images WooCommerce sans problèmes CORS/Mixed Content
 router.get('/', async (req, res) => {
@@ -15,6 +21,7 @@ router.get('/', async (req, res) => {
     const response = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 10000,
+      httpsAgent: httpsAgent,
       headers: {
         'User-Agent': 'Picking-WebApp/1.0'
       }
