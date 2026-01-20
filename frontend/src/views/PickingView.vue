@@ -417,10 +417,17 @@ async function markItemAsPicked(item) {
 
     // Feedback immédiat
     feedbackService.success()
-    showFeedback('✅ Article scanné avec succès !', 'success')
 
-    currentItemId.value = null
-    manualSku.value = ''
+    // Si l'article est complètement pické, fermer la section de scan
+    // Sinon, garder la section ouverte pour scanner les unités restantes
+    if (isPicked) {
+      showFeedback('✅ Article complètement scanné !', 'success')
+      currentItemId.value = null
+      manualSku.value = ''
+    } else {
+      showFeedback(`✅ ${newPickedQty}/${item.quantity} scanné(s) - continuez à scanner`, 'success')
+      manualSku.value = ''
+    }
 
     // Tenter la sync API en arrière-plan (non bloquant)
     if (syncService.isOnline()) {
