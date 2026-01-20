@@ -13,7 +13,7 @@
     </div>
 
     <div v-else-if="scanError" class="scanner-error">
-      <p>{{ scanError }}</p>
+      <p style="white-space: pre-line;">{{ scanError }}</p>
       <button @click="startScanner" class="btn-retry">🔄 Réessayer</button>
     </div>
 
@@ -37,6 +37,14 @@ const isScanning = ref(false)
 const lastScan = ref('')
 const qrScanner = ref(null)
 const scanError = ref('')
+const debugInfo = ref('')
+
+// Détecter si on est en mode PWA standalone sur iOS
+function isIOSPWA() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const isStandalone = window.navigator.standalone === true
+  return isIOS && isStandalone
+}
 
 // Démarrer automatiquement le scanner au montage
 onMounted(async () => {
@@ -45,6 +53,7 @@ onMounted(async () => {
 
 async function startScanner() {
   scanError.value = ''
+  debugInfo.value = ''
 
   try {
     // Vérifier si HTTPS est actif (requis pour la caméra sur iOS)
@@ -53,11 +62,37 @@ async function startScanner() {
       return
     }
 
+    // Détecter le mode PWA iOS
+    const isPWA = isIOSPWA()
+    if (isPWA) {
+      debugInfo.value = 'Mode PWA iOS détecté'
+      console.log('📱 Mode PWA iOS détecté')
+    }
+
+    // Demander explicitement la permission caméra avant de démarrer le scanner
+    // C'est crucial pour le mode PWA sur iOS
+    try {
+      console.log('📷 Demande de permission caméra...')
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      })
+      console.log('✅ Permission caméra accordée')
+      // Arrêter immédiatement le stream, on le relancera via Html5Qrcode
+      stream.getTracks().forEach(track => track.stop())
+    } catch (permError) {
+      console.error('❌ Erreur permission caméra:', permError)
+      throw permError
+    }
+
     // Activer l'affichage du scanner pour créer l'élément DOM
     isScanning.value = true
 
-    // Attendre que le DOM soit mis à jour
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // Attendre que le DOM soit mis à jour (plus long sur iOS PWA)
+    await new Promise(resolve => setTimeout(resolve, isPWA ? 300 : 100))
 
     // Vérifier que l'élément existe
     const element = document.getElementById('qr-reader')
@@ -68,30 +103,34 @@ async function startScanner() {
     qrScanner.value = new Html5Qrcode('qr-reader')
 
     // Calculer la taille du QR box en fonction de la taille de l'écran
-    const qrBoxSize = Math.min(window.innerWidth * 0.8, 300)
+    const qrBoxSize = Math.min(window.innerWidth * 0.7, 250)
+
+    // Configuration adaptée pour iOS PWA
+    const config = {
+      fps: isPWA ? 5 : 10, // FPS plus bas sur PWA pour stabilité
+      qrbox: { width: qrBoxSize, height: qrBoxSize },
+      aspectRatio: 1.0,
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: false // Désactiver sur iOS pour compatibilité
+      }
+    }
 
     // Essayer d'abord avec la caméra arrière
     try {
+      console.log('🎥 Démarrage scanner caméra arrière...')
       await qrScanner.value.start(
-        { facingMode: 'environment' }, // Caméra arrière
-        {
-          fps: 10,
-          qrbox: { width: qrBoxSize, height: qrBoxSize },
-          aspectRatio: 1.0
-        },
+        { facingMode: 'environment' },
+        config,
         onScanSuccess,
         onScanFailure
       )
+      console.log('✅ Scanner démarré avec succès')
     } catch (backCameraError) {
       console.warn('Caméra arrière non disponible, essai avec caméra frontale:', backCameraError)
       // Si la caméra arrière échoue, essayer la frontale
       await qrScanner.value.start(
-        { facingMode: 'user' }, // Caméra frontale
-        {
-          fps: 10,
-          qrbox: { width: qrBoxSize, height: qrBoxSize },
-          aspectRatio: 1.0
-        },
+        { facingMode: 'user' },
+        config,
         onScanSuccess,
         onScanFailure
       )
@@ -103,15 +142,22 @@ async function startScanner() {
     isScanning.value = false
 
     if (error.name === 'NotAllowedError') {
-      scanError.value = '❌ Permission caméra refusée. Autorisez l\'accès dans les réglages.'
+      scanError.value = '❌ Permission caméra refusée. Allez dans Réglages > Safari > Caméra et autorisez l\'accès.'
     } else if (error.name === 'NotFoundError') {
       scanError.value = '❌ Aucune caméra détectée.'
-    } else if (error.name === 'NotReadableError') {
-      scanError.value = '❌ Caméra déjà utilisée.'
+    } else if (error.name === 'NotReadableError' || error.name === 'AbortError') {
+      scanError.value = '❌ Caméra inaccessible. Fermez les autres apps utilisant la caméra et réessayez.'
     } else if (error.name === 'SecurityError') {
       scanError.value = '❌ HTTPS requis pour la caméra.'
+    } else if (error.name === 'OverconstrainedError') {
+      scanError.value = '❌ Configuration caméra non supportée.'
     } else {
-      scanError.value = '❌ Erreur caméra: ' + (error.message || 'Inconnue')
+      scanError.value = `❌ Erreur caméra: ${error.name || 'Inconnue'} - ${error.message || ''}`
+    }
+
+    // Afficher plus d'info en mode PWA
+    if (isIOSPWA()) {
+      scanError.value += '\n\n💡 Conseil: Essayez d\'ouvrir l\'app dans Safari pour utiliser le scanner.'
     }
   }
 }
