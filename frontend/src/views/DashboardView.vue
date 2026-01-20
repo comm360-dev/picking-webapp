@@ -48,7 +48,16 @@
       </div>
 
       <div class="orders-section">
-        <h2>Commandes disponibles</h2>
+        <div class="orders-header">
+          <h2>Commandes disponibles</h2>
+          <div class="sort-filter">
+            <label for="sort-order">Trier par date :</label>
+            <select id="sort-order" v-model="sortOrder" @change="onSortChange">
+              <option value="asc">Plus anciennes d'abord</option>
+              <option value="desc">Plus récentes d'abord</option>
+            </select>
+          </div>
+        </div>
 
         <div v-if="ordersStore.loading" class="loading">
           Chargement des commandes...
@@ -90,10 +99,15 @@ const ordersStore = useOrdersStore()
 
 const syncMessage = ref('')
 const syncMessageType = ref('')
+const sortOrder = ref('asc') // Par défaut : plus anciennes d'abord
 
 onMounted(async () => {
   await ordersStore.fetchOrders()
 })
+
+function onSortChange() {
+  ordersStore.setSortOrder(sortOrder.value)
+}
 
 async function handleSync() {
   syncMessage.value = ''
@@ -371,11 +385,54 @@ function handleLogout() {
   animation: slideUp 0.5s ease 0.1s backwards;
 }
 
-.orders-section h2 {
+.orders-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.orders-header h2 {
+  margin: 0;
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.sort-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sort-filter label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.sort-filter select {
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sort-filter select:hover {
+  border-color: var(--primary-light);
+}
+
+.sort-filter select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(12, 180, 212, 0.1);
 }
 
 .loading,
@@ -447,6 +504,19 @@ function handleLogout() {
   .btn-sync {
     width: 100%;
     padding: 1rem;
+  }
+
+  .orders-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sort-filter {
+    width: 100%;
+  }
+
+  .sort-filter select {
+    flex: 1;
   }
 
   .orders-grid {

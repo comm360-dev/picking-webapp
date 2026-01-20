@@ -9,14 +9,30 @@ export const useOrdersStore = defineStore('orders', () => {
   const loading = ref(false)
   const error = ref(null)
   const syncing = ref(false)
+  const sortOrder = ref('asc') // 'asc' = plus anciennes en premier, 'desc' = plus récentes en premier
 
-  const pendingOrders = computed(() =>
-    orders.value.filter(o => o.status === 'pending' || o.status === 'processing')
-  )
+  // Fonction de tri par date
+  const sortByDate = (ordersList, order) => {
+    return [...ordersList].sort((a, b) => {
+      const dateA = new Date(a.created_at || a.date_created)
+      const dateB = new Date(b.created_at || b.date_created)
+      return order === 'asc' ? dateA - dateB : dateB - dateA
+    })
+  }
 
-  const completedOrders = computed(() =>
-    orders.value.filter(o => o.status === 'completed')
-  )
+  const pendingOrders = computed(() => {
+    const filtered = orders.value.filter(o => o.status === 'pending' || o.status === 'processing')
+    return sortByDate(filtered, sortOrder.value)
+  })
+
+  const completedOrders = computed(() => {
+    const filtered = orders.value.filter(o => o.status === 'completed')
+    return sortByDate(filtered, sortOrder.value)
+  })
+
+  function setSortOrder(order) {
+    sortOrder.value = order
+  }
 
   const ordersCount = computed(() => orders.value.length)
 
@@ -159,6 +175,7 @@ export const useOrdersStore = defineStore('orders', () => {
     loading,
     error,
     syncing,
+    sortOrder,
     pendingOrders,
     completedOrders,
     ordersCount,
@@ -167,6 +184,7 @@ export const useOrdersStore = defineStore('orders', () => {
     getOrderDetails,
     updateOrderStatus,
     completeOrder,
-    clearOrders
+    clearOrders,
+    setSortOrder
   }
 })
