@@ -75,12 +75,12 @@
 
               <div class="item-actions">
                 <button
-                  v-if="!item.is_picked && !item.is_missing"
+                  v-if="!item.is_picked && !item.is_missing && currentItemId !== item.id"
                   @click="selectItem(item)"
                   class="btn-scan"
                   :disabled="currentItemId && currentItemId !== item.id"
                 >
-                  {{ currentItemId === item.id ? '📷 Scanner maintenant' : 'Sélectionner' }}
+                  📷 Scanner
                 </button>
 
                 <button
@@ -132,11 +132,11 @@
           <h3 v-if="!hasMissingItems">🎉 Tous les articles ont été scannés !</h3>
           <h3 v-else>⚠️ Préparation terminée (avec produits manquants)</h3>
 
-          <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser la commande</p>
+          <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser et passer à la commande suivante</p>
           <p v-else>Certains produits sont manquants. La commande sera finalisée comme partiellement préparée.</p>
 
-          <button @click="completeOrder" :disabled="completing" class="btn-complete">
-            {{ completing ? 'Finalisation...' : 'Finaliser la commande' }}
+          <button @click="completeAndNext" :disabled="completing" class="btn-complete">
+            {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
           </button>
         </div>
       </div>
@@ -385,20 +385,29 @@ async function markItemAsPicked(item) {
   }
 }
 
-async function completeOrder() {
-  if (!confirm('Êtes-vous sûr de vouloir finaliser cette commande ?')) {
-    return
-  }
-
+async function completeAndNext() {
   completing.value = true
 
   try {
     await ordersStore.completeOrder(order.value.id)
-    showFeedback('🎉 Commande finalisée avec succès !', 'success')
 
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 1500)
+    // Rafraîchir la liste des commandes pour obtenir la suivante
+    await ordersStore.fetchOrders()
+
+    // Trouver la prochaine commande en attente
+    const nextOrder = ordersStore.pendingOrders[0]
+
+    if (nextOrder) {
+      showFeedback('🎉 Commande finalisée ! Passage à la suivante...', 'success')
+      setTimeout(() => {
+        router.push(`/picking/${nextOrder.id}`)
+      }, 1000)
+    } else {
+      showFeedback('🎉 Toutes les commandes sont terminées !', 'success')
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 1500)
+    }
   } catch (err) {
     showFeedback('❌ Erreur lors de la finalisation', 'error')
   } finally {
