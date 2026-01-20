@@ -74,6 +74,16 @@ onMounted(async () => {
   box-sizing: border-box;
 }
 
+/* Assurer que tous les éléments héritent de la police */
+*,
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
 body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
