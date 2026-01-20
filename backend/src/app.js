@@ -58,7 +58,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Erreur serveur', error: err.message });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Serveur lancé sur le port ${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
