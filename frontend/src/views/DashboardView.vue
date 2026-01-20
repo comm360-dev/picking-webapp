@@ -135,7 +135,7 @@ async function handleSync() {
   const result = await ordersStore.syncOrders()
 
   if (result.success) {
-    syncMessage.value = `✅ ${result.stats.orders} commandes et ${result.stats.products} produits synchronisés ${result.stats.mockMode ? '(mode démo)' : ''}`
+    syncMessage.value = `✅ ${result.stats.orders} commande(s) synchronisée(s) ${result.stats.mockMode ? '(mode démo)' : ''}`
     syncMessageType.value = 'success'
   } else {
     syncMessage.value = `❌ ${result.error}`
