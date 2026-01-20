@@ -127,20 +127,33 @@
         </div>
       </div>
 
+      <!-- Bandeau pour commande en attente (on-hold) -->
+      <div v-if="isOnHold" class="on-hold-banner">
+        <div class="on-hold-card">
+          <h3>⏸️ Commande en attente</h3>
+          <p>Cette commande a des articles en rupture de stock. Scannez les articles disponibles pour la finaliser.</p>
+          <button @click="resumeOrder" :disabled="resuming" class="btn-resume">
+            {{ resuming ? 'Reprise...' : '▶️ Reprendre la commande' }}
+          </button>
+        </div>
+      </div>
+
       <div v-if="allItemsPicked" class="completion-section">
-        <div class="completion-card" :class="{ 'partial-completion': hasMissingItems }">
+        <div class="completion-card" :class="{ 'partial-completion': hasMissingItems && !isOnHold }">
           <h3 v-if="!hasMissingItems">🎉 Tous les articles ont été scannés !</h3>
+          <h3 v-else-if="isOnHold">✅ Commande prête à être finalisée</h3>
           <h3 v-else>⚠️ Articles en rupture de stock</h3>
 
           <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser et passer à la commande suivante</p>
+          <p v-else-if="isOnHold">Tous les articles disponibles ont été scannés. Vous pouvez finaliser cette commande.</p>
           <p v-else>Mettez la commande en attente pour la reprendre quand les articles seront disponibles.</p>
 
           <div class="completion-actions">
-            <button v-if="!hasMissingItems" @click="completeAndNext" :disabled="completing" class="btn-complete">
+            <button v-if="!hasMissingItems || isOnHold" @click="completeAndNext" :disabled="completing" class="btn-complete">
               {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
             </button>
 
-            <button v-if="hasMissingItems" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
+            <button v-if="hasMissingItems && !isOnHold" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
               {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
             </button>
           </div>
@@ -214,6 +227,7 @@ const showMissingModal = ref(false)
 const missingItem = ref(null)
 const outOfStock = ref(false)
 const holdingOrder = ref(false)
+const resuming = ref(false)
 
 const totalItems = computed(() => {
   if (!order.value?.items) return 0
@@ -239,6 +253,10 @@ const allItemsPicked = computed(() => {
 const hasMissingItems = computed(() => {
   if (!order.value?.items) return false
   return order.value.items.some(item => item.is_missing)
+})
+
+const isOnHold = computed(() => {
+  return order.value?.status === 'on-hold'
 })
 
 onMounted(async () => {
@@ -459,6 +477,24 @@ async function holdOrderAndNext() {
     showFeedback('❌ Erreur lors de la mise en attente', 'error')
   } finally {
     holdingOrder.value = false
+  }
+}
+
+async function resumeOrder() {
+  resuming.value = true
+
+  try {
+    // Remettre la commande en statut "processing" pour pouvoir la finaliser
+    await api.put(`/orders/${order.value.id}/status`, { status: 'processing' })
+
+    // Mettre à jour le statut local
+    order.value.status = 'processing'
+
+    showFeedback('▶️ Commande reprise ! Vous pouvez scanner les articles.', 'success')
+  } catch (err) {
+    showFeedback('❌ Erreur lors de la reprise', 'error')
+  } finally {
+    resuming.value = false
   }
 }
 
@@ -1091,6 +1127,59 @@ async function confirmMissing() {
   color: var(--error);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
+}
+
+/* === ON-HOLD BANNER === */
+.on-hold-banner {
+  margin-top: 1.5rem;
+}
+
+.on-hold-card {
+  background: linear-gradient(135deg, rgba(12, 180, 212, 0.1) 0%, rgba(153, 207, 181, 0.1) 100%);
+  color: var(--text-primary);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  border: 2px solid rgba(12, 180, 212, 0.4);
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.15);
+}
+
+.on-hold-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.on-hold-card p {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.btn-resume {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(12, 180, 212, 0.3);
+}
+
+.btn-resume:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(12, 180, 212, 0.4);
+}
+
+.btn-resume:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* === COMPLETION === */
