@@ -19,16 +19,16 @@
       <div class="top-section">
         <div class="stats-grid">
           <div class="stat-card">
-            <h3>Commandes en attente</h3>
+            <h3>À préparer</h3>
             <p class="stat-number">{{ ordersStore.pendingOrders.length }}</p>
           </div>
           <div class="stat-card">
-            <h3>Commandes traitées</h3>
-            <p class="stat-number">{{ ordersStore.completedOrders.length }}</p>
+            <h3>En attente (rupture)</h3>
+            <p class="stat-number warning">{{ ordersStore.onHoldOrders.length }}</p>
           </div>
           <div class="stat-card">
-            <h3>Total commandes</h3>
-            <p class="stat-number">{{ ordersStore.ordersCount }}</p>
+            <h3>Terminées</h3>
+            <p class="stat-number">{{ ordersStore.completedOrders.length }}</p>
           </div>
         </div>
 
@@ -49,7 +49,22 @@
 
       <div class="orders-section">
         <div class="orders-header">
-          <h2>Commandes disponibles</h2>
+          <div class="tabs">
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'pending' }"
+              @click="activeTab = 'pending'"
+            >
+              À préparer ({{ ordersStore.pendingOrders.length }})
+            </button>
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'on-hold', 'has-items': ordersStore.onHoldOrders.length > 0 }"
+              @click="activeTab = 'on-hold'"
+            >
+              En attente ({{ ordersStore.onHoldOrders.length }})
+            </button>
+          </div>
           <div class="sort-filter">
             <label for="sort-order">Trier par date :</label>
             <select id="sort-order" v-model="sortOrder" @change="onSortChange">
@@ -67,14 +82,19 @@
           {{ ordersStore.error }}
         </div>
 
-        <div v-else-if="ordersStore.orders.length === 0" class="empty-state">
-          <p>Aucune commande disponible</p>
+        <div v-else-if="activeTab === 'pending' && ordersStore.pendingOrders.length === 0" class="empty-state">
+          <p>Aucune commande à préparer</p>
           <p class="hint">Cliquez sur "Synchroniser les commandes" pour récupérer les commandes</p>
+        </div>
+
+        <div v-else-if="activeTab === 'on-hold' && ordersStore.onHoldOrders.length === 0" class="empty-state">
+          <p>Aucune commande en attente</p>
+          <p class="hint">Les commandes avec des articles en rupture de stock apparaîtront ici</p>
         </div>
 
         <div v-else class="orders-grid">
           <OrderCard
-            v-for="order in ordersStore.pendingOrders"
+            v-for="order in activeTab === 'pending' ? ordersStore.pendingOrders : ordersStore.onHoldOrders"
             :key="order.id"
             :order="order"
             @view="viewOrder"
@@ -100,6 +120,7 @@ const ordersStore = useOrdersStore()
 const syncMessage = ref('')
 const syncMessageType = ref('')
 const sortOrder = ref('asc') // Par défaut : plus anciennes d'abord
+const activeTab = ref('pending') // 'pending' ou 'on-hold'
 
 onMounted(async () => {
   await ordersStore.fetchOrders()
@@ -324,6 +345,13 @@ function handleLogout() {
   background-clip: text;
 }
 
+.stat-number.warning {
+  background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .sync-section {
   text-align: center;
   padding: 2rem;
@@ -399,6 +427,49 @@ function handleLogout() {
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab:hover {
+  background: var(--bg-card);
+  border-color: var(--primary-light);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(12, 180, 212, 0.3);
+}
+
+.tab.has-items {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: var(--warning);
+}
+
+.tab.has-items.active {
+  background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .sort-filter {
@@ -509,6 +580,17 @@ function handleLogout() {
   .orders-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.813rem;
+    text-align: center;
   }
 
   .sort-filter {

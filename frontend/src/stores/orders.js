@@ -33,6 +33,11 @@ export const useOrdersStore = defineStore('orders', () => {
     return sortByDate(filtered, sortOrder.value)
   })
 
+  const onHoldOrders = computed(() => {
+    const filtered = orders.value.filter(o => o.status === 'on-hold')
+    return sortByDate(filtered, sortOrder.value)
+  })
+
   function setSortOrder(order) {
     sortOrder.value = order
   }
@@ -181,6 +186,7 @@ export const useOrdersStore = defineStore('orders', () => {
     sortOrder,
     pendingOrders,
     completedOrders,
+    onHoldOrders,
     ordersCount,
     fetchOrders,
     syncOrders,

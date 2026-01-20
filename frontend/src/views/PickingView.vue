@@ -130,14 +130,20 @@
       <div v-if="allItemsPicked" class="completion-section">
         <div class="completion-card" :class="{ 'partial-completion': hasMissingItems }">
           <h3 v-if="!hasMissingItems">🎉 Tous les articles ont été scannés !</h3>
-          <h3 v-else>⚠️ Préparation terminée (avec produits manquants)</h3>
+          <h3 v-else>⚠️ Articles en rupture de stock</h3>
 
           <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser et passer à la commande suivante</p>
-          <p v-else>Certains produits sont manquants. La commande sera finalisée comme partiellement préparée.</p>
+          <p v-else>Mettez la commande en attente pour la reprendre quand les articles seront disponibles.</p>
 
-          <button @click="completeAndNext" :disabled="completing" class="btn-complete">
-            {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
-          </button>
+          <div class="completion-actions">
+            <button v-if="!hasMissingItems" @click="completeAndNext" :disabled="completing" class="btn-complete">
+              {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
+            </button>
+
+            <button v-if="hasMissingItems" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
+              {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -153,19 +159,16 @@
         <p class="modal-product-name">{{ missingItem?.name }}</p>
         <p class="modal-product-sku">SKU: {{ missingItem?.sku }}</p>
 
-        <div class="form-group">
-          <label for="missing-notes">Raison / Note:</label>
-          <textarea
-            id="missing-notes"
-            v-model="missingNotes"
-            placeholder="Ex: Rupture de stock, produit endommagé, non trouvé..."
-            rows="4"
-          ></textarea>
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="outOfStock" />
+            <span>Rupture de stock</span>
+          </label>
         </div>
 
         <div class="modal-actions">
           <button @click="closeMissingModal" class="btn-cancel">Annuler</button>
-          <button @click="confirmMissing" class="btn-confirm-missing">Confirmer</button>
+          <button @click="confirmMissing" class="btn-confirm-missing" :disabled="!outOfStock">Confirmer</button>
         </div>
       </div>
     </div>
@@ -209,7 +212,8 @@ const feedback = ref(null)
 const completing = ref(false)
 const showMissingModal = ref(false)
 const missingItem = ref(null)
-const missingNotes = ref('')
+const outOfStock = ref(false)
+const holdingOrder = ref(false)
 
 const totalItems = computed(() => {
   if (!order.value?.items) return 0
@@ -427,6 +431,37 @@ async function completeAndNext() {
   }
 }
 
+async function holdOrderAndNext() {
+  holdingOrder.value = true
+
+  try {
+    // Mettre la commande en attente via l'API
+    await api.put(`/orders/${order.value.id}/hold`)
+
+    // Rafraîchir la liste des commandes pour obtenir la suivante
+    await ordersStore.fetchOrders()
+
+    // Trouver la prochaine commande en attente
+    const nextOrder = ordersStore.pendingOrders[0]
+
+    if (nextOrder) {
+      showFeedback('⏸️ Commande mise en attente ! Passage à la suivante...', 'success')
+      setTimeout(() => {
+        router.push(`/picking/${nextOrder.id}`)
+      }, 1000)
+    } else {
+      showFeedback('⏸️ Commande mise en attente !', 'success')
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 1500)
+    }
+  } catch (err) {
+    showFeedback('❌ Erreur lors de la mise en attente', 'error')
+  } finally {
+    holdingOrder.value = false
+  }
+}
+
 function showFeedback(message, type) {
   feedback.value = { message, type }
   setTimeout(() => {
@@ -440,7 +475,7 @@ function goBack() {
 
 function openMissingModal(item) {
   missingItem.value = item
-  missingNotes.value = ''
+  outOfStock.value = false
   showMissingModal.value = true
   currentItemId.value = null
 }
@@ -448,14 +483,14 @@ function openMissingModal(item) {
 function closeMissingModal() {
   showMissingModal.value = false
   missingItem.value = null
-  missingNotes.value = ''
+  outOfStock.value = false
 }
 
 async function confirmMissing() {
-  if (!missingItem.value) return
+  if (!missingItem.value || !outOfStock.value) return
 
   try {
-    const notes = missingNotes.value || 'Produit manquant'
+    const notes = 'Rupture de stock'
     const orderId = parseInt(route.params.id)
     const itemId = missingItem.value.id
 
@@ -473,7 +508,7 @@ async function confirmMissing() {
     await syncService.markItemMissing(orderId, itemId, notes)
 
     // Feedback immédiat
-    showFeedback('⚠️ Produit marqué comme manquant', 'error')
+    showFeedback('⚠️ Produit marqué en rupture de stock', 'warning')
     closeMissingModal()
 
     // Tenter la sync API en arrière-plan (non bloquant)
@@ -1134,6 +1169,38 @@ async function confirmMissing() {
   cursor: not-allowed;
 }
 
+.completion-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-hold {
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.btn-hold:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.btn-hold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* === FEEDBACK TOAST === */
 .feedback-toast {
   position: fixed;
@@ -1279,9 +1346,43 @@ async function confirmMissing() {
   transition: all var(--transition-fast);
 }
 
-.btn-confirm-missing:hover {
+.btn-confirm-missing:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+}
+
+.btn-confirm-missing:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* === CHECKBOX === */
+.checkbox-group {
+  padding: 1rem;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--warning);
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  font-size: 0.938rem;
 }
 
 /* === ANIMATIONS === */

@@ -197,6 +197,43 @@ class OrderController {
       res.status(500).json({ message: 'Erreur serveur' });
     }
   }
+
+  static async holdOrder(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      // Mettre la commande en attente (on-hold) localement
+      // On garde le statut 'processing' sur WooCommerce mais on marque 'on-hold' localement
+      const order = await Order.updateStatus(id, 'on-hold');
+
+      if (!order) {
+        return res.status(404).json({ message: 'Commande non trouvée' });
+      }
+
+      // Enregistrer dans l'historique
+      await History.create({
+        orderId: parseInt(id),
+        userId,
+        action: 'on-hold',
+        details: {
+          orderNumber: order.order_number,
+          customerName: order.customer_name,
+          reason: 'Articles en rupture de stock'
+        }
+      });
+
+      console.log(`⏸️ Commande #${order.order_number} mise en attente`);
+
+      res.json({
+        message: 'Commande mise en attente',
+        order
+      });
+    } catch (error) {
+      console.error('Erreur holdOrder:', error);
+      res.status(500).json({ message: 'Erreur serveur' });
+    }
+  }
 }
 
 module.exports = OrderController;

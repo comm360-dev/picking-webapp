@@ -13,6 +13,7 @@ router.get('/:id', OrderController.getOrderDetails);
 router.put('/:id/status', OrderController.updateOrderStatus);
 router.post('/:id/start', OrderController.startOrder);
 router.post('/:id/complete', OrderController.completeOrder);
+router.put('/:id/hold', OrderController.holdOrder);
 router.put('/:orderId/items/:itemId/pick', OrderItemController.markItemAsPicked);
 router.put('/:orderId/items/:itemId/missing', OrderItemController.markItemAsMissing);
 

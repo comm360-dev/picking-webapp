@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd on-hold order management for out-of-stock items\n\n- Simplify missing item modal to checkbox only \\(no notes\\)\n- Add \"Mettre en attente\" button for orders with missing items\n- Create PUT /orders/:id/hold API endpoint\n- Add onHoldOrders computed in orders store\n- Add tabs on Dashboard for pending/on-hold orders\n- Style updates for checkbox, tabs, and hold button\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
