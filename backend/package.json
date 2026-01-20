@@ -8,6 +8,7 @@
     "dev": "nodemon src/app.js",
     "init-db": "node init-tables.js",
     "clean-data": "node clean-data.js",
+    "migrate:on-hold": "node migrations/add-on-hold-status.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
