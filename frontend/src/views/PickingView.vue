@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useOrdersStore } from '../stores/orders'
 import api from '../services/api'
@@ -239,6 +239,18 @@ const hasMissingItems = computed(() => {
 
 onMounted(async () => {
   await loadOrder()
+})
+
+// Surveiller les changements de route pour recharger la commande
+watch(() => route.params.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    // Reset l'état
+    currentItemId.value = null
+    manualSku.value = ''
+    feedback.value = null
+    // Charger la nouvelle commande
+    await loadOrder()
+  }
 })
 
 async function loadOrder() {
