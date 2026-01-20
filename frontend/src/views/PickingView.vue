@@ -95,6 +95,14 @@
                 <span v-if="item.is_missing" class="missing-badge">
                   ⚠️ Produit manquant
                 </span>
+
+                <button
+                  v-if="item.is_missing && !isOnHold"
+                  @click="resetMissingItem(item)"
+                  class="btn-reset-missing"
+                >
+                  🔄 Remettre en stock
+                </button>
               </div>
             </div>
 
@@ -557,6 +565,36 @@ async function confirmMissing() {
     }
   } catch (err) {
     console.error('Erreur confirmMissing:', err)
+    showFeedback('❌ Erreur lors de la mise à jour', 'error')
+  }
+}
+
+async function resetMissingItem(item) {
+  try {
+    const orderId = parseInt(route.params.id)
+    const itemId = item.id
+
+    // Réinitialiser le statut de l'article en mémoire
+    item.is_missing = false
+    item.notes = null
+
+    // Sauvegarder dans IndexedDB
+    await orderItemsDB.update(itemId, {
+      is_missing: false,
+      notes: null
+    })
+
+    // Feedback immédiat
+    showFeedback('✅ Produit remis en stock, vous pouvez le scanner', 'success')
+
+    // Tenter la sync API en arrière-plan
+    if (syncService.isOnline()) {
+      api.put(`/orders/${orderId}/items/${itemId}/reset-missing`).catch(apiErr => {
+        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
+      })
+    }
+  } catch (err) {
+    console.error('Erreur resetMissingItem:', err)
     showFeedback('❌ Erreur lors de la mise à jour', 'error')
   }
 }
@@ -1030,6 +1068,17 @@ async function confirmMissing() {
   font-size: 0.813rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.btn-reset-missing {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(12, 180, 212, 0.3);
+}
+
+.btn-reset-missing:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(12, 180, 212, 0.4);
 }
 
 .item-notes {

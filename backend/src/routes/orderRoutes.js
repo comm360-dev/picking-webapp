@@ -16,5 +16,6 @@ router.post('/:id/complete', OrderController.completeOrder);
 router.put('/:id/hold', OrderController.holdOrder);
 router.put('/:orderId/items/:itemId/pick', OrderItemController.markItemAsPicked);
 router.put('/:orderId/items/:itemId/missing', OrderItemController.markItemAsMissing);
+router.put('/:orderId/items/:itemId/reset-missing', OrderItemController.resetMissing);
 
 module.exports = router;

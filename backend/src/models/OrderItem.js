@@ -68,6 +68,29 @@ class OrderItem {
     return result.rows[0];
   }
 
+  static async resetMissing(itemId) {
+    const result = await pool.query(
+      `UPDATE order_items
+       SET is_missing = false, notes = NULL
+       WHERE id = $1
+       RETURNING *`,
+      [itemId]
+    );
+
+    if (result.rows[0]) {
+      // Récupérer le nom du produit pour l'historique
+      const productResult = await pool.query(
+        `SELECT p.name FROM products p
+         JOIN order_items oi ON oi.product_id = p.id
+         WHERE oi.id = $1`,
+        [itemId]
+      );
+      result.rows[0].name = productResult.rows[0]?.name || 'Produit inconnu';
+    }
+
+    return result.rows[0];
+  }
+
   static async bulkCreate(orderId, items, products) {
     const client = await pool.connect();
     try {
