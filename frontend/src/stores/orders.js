@@ -14,8 +14,9 @@ export const useOrdersStore = defineStore('orders', () => {
   // Fonction de tri par date
   const sortByDate = (ordersList, order) => {
     return [...ordersList].sort((a, b) => {
-      const dateA = new Date(a.created_at || a.date_created)
-      const dateB = new Date(b.created_at || b.date_created)
+      // order_date = date de la commande WooCommerce
+      const dateA = new Date(a.order_date || a.created_at || 0)
+      const dateB = new Date(b.order_date || b.created_at || 0)
       return order === 'asc' ? dateA - dateB : dateB - dateA
     })
   }

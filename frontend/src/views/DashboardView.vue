@@ -53,8 +53,8 @@
           <div class="sort-filter">
             <label for="sort-order">Trier par date :</label>
             <select id="sort-order" v-model="sortOrder" @change="onSortChange">
-              <option value="asc">Plus anciennes d'abord</option>
-              <option value="desc">Plus récentes d'abord</option>
+              <option value="asc">Croissant (anciennes → récentes)</option>
+              <option value="desc">Décroissant (récentes → anciennes)</option>
             </select>
           </div>
         </div>
