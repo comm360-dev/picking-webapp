@@ -9,8 +9,46 @@ const productRoutes = require('./routes/productRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const imageProxyRoutes = require('./routes/imageProxyRoutes');
 const setupRoutes = require('./routes/setupRoutes');
+const pool = require('./config/database');
 
 const app = express();
+
+// Migration automatique au démarrage
+async function runMigrations() {
+  try {
+    console.log('🔧 Vérification des migrations...');
+
+    // Ajouter le statut on-hold à la contrainte orders_status_check
+    await pool.query(`
+      DO $$
+      BEGIN
+        -- Supprimer l'ancienne contrainte si elle existe
+        IF EXISTS (
+          SELECT 1 FROM information_schema.check_constraints
+          WHERE constraint_name = 'orders_status_check'
+        ) THEN
+          ALTER TABLE orders DROP CONSTRAINT orders_status_check;
+        END IF;
+
+        -- Créer la nouvelle contrainte avec on-hold
+        ALTER TABLE orders ADD CONSTRAINT orders_status_check
+        CHECK (status IN ('pending', 'processing', 'picking', 'completed', 'failed', 'on-hold'));
+
+        RAISE NOTICE 'Migration on-hold appliquée';
+      EXCEPTION
+        WHEN duplicate_object THEN
+          RAISE NOTICE 'Contrainte déjà à jour';
+      END $$;
+    `);
+
+    console.log('✅ Migrations terminées');
+  } catch (error) {
+    console.error('⚠️ Erreur migration (non bloquante):', error.message);
+  }
+}
+
+// Exécuter les migrations au démarrage
+runMigrations();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
