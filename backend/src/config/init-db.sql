@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number VARCHAR(100),
   customer_name VARCHAR(255),
   customer_email VARCHAR(255),
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'picking', 'completed', 'failed')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'picking', 'completed', 'failed', 'on-hold')),
   total DECIMAL(10, 2),
   order_date TIMESTAMP,
   picked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
