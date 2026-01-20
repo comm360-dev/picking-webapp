@@ -146,22 +146,20 @@
         </div>
       </div>
 
-      <div v-if="allItemsPicked" class="completion-section">
-        <div class="completion-card" :class="{ 'partial-completion': hasMissingItems && !isOnHold }">
+      <div v-if="allItemsPicked && !isOnHold" class="completion-section">
+        <div class="completion-card" :class="{ 'partial-completion': hasMissingItems }">
           <h3 v-if="!hasMissingItems">🎉 Tous les articles ont été scannés !</h3>
-          <h3 v-else-if="isOnHold">✅ Commande prête à être finalisée</h3>
           <h3 v-else>⚠️ Articles en rupture de stock</h3>
 
           <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser et passer à la commande suivante</p>
-          <p v-else-if="isOnHold">Tous les articles disponibles ont été scannés. Vous pouvez finaliser cette commande.</p>
           <p v-else>Mettez la commande en attente pour la reprendre quand les articles seront disponibles.</p>
 
           <div class="completion-actions">
-            <button v-if="!hasMissingItems || isOnHold" @click="completeAndNext" :disabled="completing" class="btn-complete">
+            <button v-if="!hasMissingItems" @click="completeAndNext" :disabled="completing" class="btn-complete">
               {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
             </button>
 
-            <button v-if="hasMissingItems && !isOnHold" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
+            <button v-if="hasMissingItems" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
               {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
             </button>
           </div>
