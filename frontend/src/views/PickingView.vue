@@ -146,21 +146,25 @@
         </div>
       </div>
 
-      <div v-if="allItemsPicked && !isOnHold" class="completion-section">
-        <div class="completion-card" :class="{ 'partial-completion': hasMissingItems }">
-          <h3 v-if="!hasMissingItems">🎉 Tous les articles ont été scannés !</h3>
-          <h3 v-else>⚠️ Articles en rupture de stock</h3>
+      <!-- Bouton mettre en attente dès qu'un article est manquant -->
+      <div v-if="hasMissingItems && !isOnHold" class="hold-section">
+        <div class="hold-card">
+          <h3>⚠️ Article(s) en rupture de stock</h3>
+          <p>Vous pouvez mettre cette commande en attente et passer à la suivante.</p>
+          <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
+            {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
+          </button>
+        </div>
+      </div>
 
-          <p v-if="!hasMissingItems">Vous pouvez maintenant finaliser et passer à la commande suivante</p>
-          <p v-else>Mettez la commande en attente pour la reprendre quand les articles seront disponibles.</p>
-
+      <!-- Section finalisation quand tous les articles sont scannés (sans manquants) -->
+      <div v-if="allItemsPicked && !hasMissingItems && !isOnHold" class="completion-section">
+        <div class="completion-card">
+          <h3>🎉 Tous les articles ont été scannés !</h3>
+          <p>Vous pouvez maintenant finaliser et passer à la commande suivante</p>
           <div class="completion-actions">
-            <button v-if="!hasMissingItems" @click="completeAndNext" :disabled="completing" class="btn-complete">
+            <button @click="completeAndNext" :disabled="completing" class="btn-complete">
               {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
-            </button>
-
-            <button v-if="hasMissingItems" @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold">
-              {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
             </button>
           </div>
         </div>
@@ -1174,6 +1178,34 @@ async function resetMissingItem(item) {
   color: var(--error);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
+}
+
+/* === HOLD SECTION (pour mettre en attente) === */
+.hold-section {
+  margin-top: 1.5rem;
+}
+
+.hold-card {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  color: var(--text-primary);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  border: 2px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+}
+
+.hold-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.hold-card p {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 /* === ON-HOLD BANNER === */
