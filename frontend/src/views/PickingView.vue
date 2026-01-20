@@ -806,10 +806,16 @@ async function confirmMissing() {
 }
 
 .item-sku {
-  color: var(--text-secondary);
-  font-size: 0.813rem;
-  margin: 0.25rem 0;
+  color: var(--primary-dark);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
   font-family: monospace;
+  background: linear-gradient(135deg, rgba(12, 180, 212, 0.1) 0%, rgba(153, 207, 181, 0.1) 100%);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(12, 180, 212, 0.2);
+  display: inline-block;
 }
 
 .item-location {

@@ -13,6 +13,9 @@
             <button @click="syncProducts" class="btn-sync" :disabled="syncing">
               {{ syncing ? '⏳ Synchronisation...' : '🔄 Sync WooCommerce' }}
             </button>
+            <button @click="syncNewProducts" class="btn-sync-new" :disabled="syncingNew">
+              {{ syncingNew ? '⏳ Recherche...' : '🆕 Nouveaux produits' }}
+            </button>
             <button @click="generateAllQR" class="btn-generate" :disabled="generatingAll">
               {{ generatingAll ? `⏳ ${generationProgress.current}/${generationProgress.total}...` : '🔄 Générer QR pour tous' }}
             </button>
@@ -22,8 +25,39 @@
           </div>
         </div>
 
+        <!-- Onglets -->
+        <div class="tabs">
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'all' }"
+            @click="activeTab = 'all'"
+          >
+            Tous les produits ({{ products.length }})
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'new' }"
+            @click="activeTab = 'new'"
+          >
+            🆕 Nouveaux ({{ newProducts.length }})
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'noqr' }"
+            @click="activeTab = 'noqr'"
+          >
+            ⚠️ Sans QR ({{ productsWithoutQR.length }})
+          </button>
+        </div>
+
         <div v-if="loading" class="loading">
           Chargement des produits...
+        </div>
+
+        <div v-else-if="displayedProducts.length === 0" class="empty-state">
+          <p v-if="activeTab === 'new'">Aucun nouveau produit. Cliquez sur "🆕 Nouveaux produits" pour synchroniser.</p>
+          <p v-else-if="activeTab === 'noqr'">Tous les produits ont un QR code !</p>
+          <p v-else>Aucun produit. Cliquez sur "🔄 Sync WooCommerce" pour synchroniser.</p>
         </div>
 
         <div v-else class="products-table">
@@ -38,7 +72,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="product in products" :key="product.id">
+              <tr v-for="product in displayedProducts" :key="product.id" :class="{ 'new-product': product.isNew }">
                 <td data-label="SKU" class="sku">{{ product.sku }}</td>
                 <td data-label="Nom">{{ product.name }}</td>
                 <td data-label="Emplacement">
@@ -97,9 +131,27 @@ const router = useRouter()
 const products = ref([])
 const loading = ref(true)
 const syncing = ref(false)
+const syncingNew = ref(false)
+const activeTab = ref('all')
+const newProducts = ref([])
 
 const hasQRCodes = computed(() => {
   return products.value.some(p => p.qr_code)
+})
+
+const productsWithoutQR = computed(() => {
+  return products.value.filter(p => !p.qr_code)
+})
+
+const displayedProducts = computed(() => {
+  switch (activeTab.value) {
+    case 'new':
+      return newProducts.value
+    case 'noqr':
+      return productsWithoutQR.value
+    default:
+      return products.value
+  }
 })
 
 onMounted(async () => {
@@ -117,6 +169,7 @@ async function syncProducts() {
     const response = await api.post('/products/sync')
 
     products.value = response.data.products
+    newProducts.value = [] // Reset nouveaux produits après sync complète
 
     // Attendre le rendu puis afficher les QR codes existants
     await nextTick()
@@ -132,6 +185,49 @@ async function syncProducts() {
     alert('Erreur lors de la synchronisation des produits')
   } finally {
     syncing.value = false
+  }
+}
+
+async function syncNewProducts() {
+  syncingNew.value = true
+  try {
+    console.log('🆕 Recherche de nouveaux produits WooCommerce...')
+
+    // Garder les IDs des produits existants avant sync
+    const existingIds = new Set(products.value.map(p => p.wc_id))
+
+    // Synchroniser tous les produits
+    const response = await api.post('/products/sync')
+
+    // Identifier les nouveaux produits (ceux qui n'existaient pas avant)
+    const allProducts = response.data.products
+    const newOnes = allProducts.filter(p => !existingIds.has(p.wc_id))
+
+    // Marquer les nouveaux produits
+    newOnes.forEach(p => p.isNew = true)
+
+    products.value = allProducts
+    newProducts.value = newOnes
+
+    // Attendre le rendu puis afficher les QR codes existants
+    await nextTick()
+    products.value.forEach(product => {
+      if (product.qr_code) {
+        renderQRCode(product)
+      }
+    })
+
+    if (newOnes.length > 0) {
+      activeTab.value = 'new' // Basculer sur l'onglet des nouveaux produits
+      alert(`✅ ${newOnes.length} nouveau(x) produit(s) trouvé(s) !`)
+    } else {
+      alert('Aucun nouveau produit trouvé.')
+    }
+  } catch (error) {
+    console.error('Erreur sync nouveaux produits:', error)
+    alert('Erreur lors de la recherche de nouveaux produits')
+  } finally {
+    syncingNew.value = false
   }
 }
 
@@ -620,6 +716,26 @@ function goBack() {
   cursor: not-allowed;
 }
 
+.btn-sync-new {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-sync-new:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn-sync-new:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-generate {
   padding: 0.75rem 1.5rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -656,10 +772,56 @@ function goBack() {
   background: #ccc;
 }
 
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.tab:hover {
+  color: var(--primary);
+}
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: rgba(12, 180, 212, 0.05);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  background: #f9f9f9;
+  border-radius: var(--radius-md);
+}
+
 .loading {
   text-align: center;
   padding: 2rem;
   color: #666;
+}
+
+tr.new-product {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+}
+
+tr.new-product td:first-child::before {
+  content: '🆕 ';
 }
 
 .products-table {
