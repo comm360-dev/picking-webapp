@@ -155,29 +155,65 @@ class Order {
       for (const order of orders) {
         const customerName = `${order.billing.first_name} ${order.billing.last_name}`;
 
-        const result = await client.query(
-          `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (wc_id)
-           DO UPDATE SET
-             order_number = EXCLUDED.order_number,
-             customer_name = EXCLUDED.customer_name,
-             customer_email = EXCLUDED.customer_email,
-             status = EXCLUDED.status,
-             total = EXCLUDED.total,
-             order_date = EXCLUDED.order_date,
-             updated_at = CURRENT_TIMESTAMP
-           RETURNING *`,
-          [
-            order.id,
-            order.number,
-            customerName,
-            order.billing.email,
-            order.status,
-            order.total,
-            order.date_created
-          ]
+        // Vérifier si la commande existe déjà avec un statut local spécial (on-hold, completed)
+        const existingOrder = await client.query(
+          'SELECT id, status FROM orders WHERE wc_id = $1',
+          [order.id]
         );
+
+        // Si la commande existe et est en "on-hold" ou "completed", ne pas écraser le statut
+        const preserveLocalStatus = existingOrder.rows.length > 0 &&
+          ['on-hold', 'completed'].includes(existingOrder.rows[0].status);
+
+        let result;
+        if (preserveLocalStatus) {
+          // Mettre à jour sans toucher au statut
+          result = await client.query(
+            `UPDATE orders SET
+               order_number = $2,
+               customer_name = $3,
+               customer_email = $4,
+               total = $5,
+               order_date = $6,
+               updated_at = CURRENT_TIMESTAMP
+             WHERE wc_id = $1
+             RETURNING *`,
+            [
+              order.id,
+              order.number,
+              customerName,
+              order.billing.email,
+              order.total,
+              order.date_created
+            ]
+          );
+          console.log(`⏸️ Commande #${order.number} préservée avec statut local: ${existingOrder.rows[0].status}`);
+        } else {
+          // Insérer ou mettre à jour normalement (y compris le statut)
+          result = await client.query(
+            `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (wc_id)
+             DO UPDATE SET
+               order_number = EXCLUDED.order_number,
+               customer_name = EXCLUDED.customer_name,
+               customer_email = EXCLUDED.customer_email,
+               status = EXCLUDED.status,
+               total = EXCLUDED.total,
+               order_date = EXCLUDED.order_date,
+               updated_at = CURRENT_TIMESTAMP
+             RETURNING *`,
+            [
+              order.id,
+              order.number,
+              customerName,
+              order.billing.email,
+              order.status,
+              order.total,
+              order.date_created
+            ]
+          );
+        }
 
         insertedOrders.push(result.rows[0]);
       }

@@ -40,9 +40,16 @@ class OrderController {
       console.log(`✅ ${orders.length} commandes synchronisées`);
 
       // Synchroniser les items de chaque commande
+      // Ne pas écraser les items des commandes on-hold ou completed
       for (let i = 0; i < wcOrders.length; i++) {
         const wcOrder = wcOrders[i];
         const order = orders[i];
+
+        // Ne pas toucher aux items des commandes on-hold ou completed
+        if (['on-hold', 'completed'].includes(order.status)) {
+          console.log(`⏸️ Items de la commande #${order.order_number} préservés (statut: ${order.status})`);
+          continue;
+        }
 
         if (wcOrder.line_items && wcOrder.line_items.length > 0) {
           await OrderItem.bulkCreate(order.id, wcOrder.line_items, products);
