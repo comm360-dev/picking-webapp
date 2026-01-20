@@ -105,6 +105,38 @@ class OrderItemController {
       res.status(500).json({ message: 'Erreur serveur' });
     }
   }
+
+  static async unpickItem(req, res) {
+    try {
+      const { orderId, itemId } = req.params;
+      const userId = req.user.id;
+
+      const item = await OrderItem.unpick(itemId);
+
+      if (!item) {
+        return res.status(404).json({ message: 'Article non trouvé' });
+      }
+
+      // Enregistrer dans l'historique
+      await History.create({
+        orderId: parseInt(orderId),
+        userId,
+        action: 'item_unpicked',
+        details: {
+          itemId: item.id,
+          productName: item.name
+        }
+      });
+
+      res.json({
+        message: 'Scan annulé',
+        item
+      });
+    } catch (error) {
+      console.error('Erreur unpickItem:', error);
+      res.status(500).json({ message: 'Erreur serveur' });
+    }
+  }
 }
 
 module.exports = OrderItemController;

@@ -103,6 +103,14 @@
                 >
                   🔄 Remettre en stock
                 </button>
+
+                <button
+                  v-if="item.is_picked && !isOnHold"
+                  @click="unpickItem(item)"
+                  class="btn-unpick"
+                >
+                  ↩️ Annuler le scan
+                </button>
               </div>
             </div>
 
@@ -600,6 +608,36 @@ async function resetMissingItem(item) {
     showFeedback('❌ Erreur lors de la mise à jour', 'error')
   }
 }
+
+async function unpickItem(item) {
+  try {
+    const orderId = parseInt(route.params.id)
+    const itemId = item.id
+
+    // Réinitialiser le statut de l'article en mémoire
+    item.is_picked = false
+    item.picked_quantity = 0
+
+    // Sauvegarder dans IndexedDB
+    await orderItemsDB.update(itemId, {
+      is_picked: false,
+      picked_quantity: 0
+    })
+
+    // Feedback immédiat
+    showFeedback('↩️ Scan annulé, vous pouvez rescanner ou marquer comme manquant', 'info')
+
+    // Tenter la sync API en arrière-plan
+    if (syncService.isOnline()) {
+      api.put(`/orders/${orderId}/items/${itemId}/unpick`).catch(apiErr => {
+        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
+      })
+    }
+  } catch (err) {
+    console.error('Erreur unpickItem:', err)
+    showFeedback('❌ Erreur lors de l\'annulation', 'error')
+  }
+}
 </script>
 
 <style scoped>
@@ -1081,6 +1119,17 @@ async function resetMissingItem(item) {
 .btn-reset-missing:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(12, 180, 212, 0.4);
+}
+
+.btn-unpick {
+  background: linear-gradient(135deg, var(--text-secondary) 0%, #475569 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.btn-unpick:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(100, 116, 139, 0.4);
 }
 
 .item-notes {
