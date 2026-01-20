@@ -22,7 +22,9 @@ export const useOrdersStore = defineStore('orders', () => {
   }
 
   const pendingOrders = computed(() => {
-    const filtered = orders.value.filter(o => o.status === 'pending' || o.status === 'processing')
+    // Seulement "processing" = commandes payées à préparer
+    // "pending" = en attente de paiement (ne pas afficher)
+    const filtered = orders.value.filter(o => o.status === 'processing')
     return sortByDate(filtered, sortOrder.value)
   })
 
