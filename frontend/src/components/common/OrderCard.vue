@@ -57,7 +57,8 @@ const statusLabel = computed(() => {
     processing: 'En traitement',
     picking: 'En préparation',
     completed: 'Terminée',
-    failed: 'Échouée'
+    failed: 'Échouée',
+    'on-hold': 'En attente'
   }
   return labels[props.order.status] || props.order.status
 })
@@ -138,6 +139,10 @@ function formatDate(dateString) {
   border-left-color: var(--success);
 }
 
+.order-card.status-on-hold {
+  border-left-color: var(--warning);
+}
+
 .order-header {
   display: flex;
   justify-content: space-between;
@@ -197,6 +202,11 @@ function formatDate(dateString) {
 
 .order-status.completed {
   background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  color: white;
+}
+
+.order-status.on-hold {
+  background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
   color: white;
 }
 
