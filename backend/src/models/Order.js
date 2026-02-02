@@ -155,6 +155,14 @@ class Order {
       for (const order of orders) {
         const customerName = `${order.billing.first_name} ${order.billing.last_name}`;
 
+        // Extraire l'adresse de livraison (utiliser shipping si disponible, sinon billing)
+        const shipping = order.shipping || order.billing;
+        const shippingAddress = [shipping.address_1, shipping.address_2].filter(Boolean).join(', ');
+        const shippingCity = shipping.city || '';
+        const shippingPostcode = shipping.postcode || '';
+        const shippingCountry = shipping.country || '';
+        const customerPhone = order.billing.phone || '';
+
         // Vérifier si la commande existe déjà avec un statut local spécial (on-hold, completed)
         const existingOrder = await client.query(
           'SELECT id, status FROM orders WHERE wc_id = $1',
@@ -175,6 +183,11 @@ class Order {
                customer_email = $4,
                total = $5,
                order_date = $6,
+               shipping_address = $7,
+               shipping_city = $8,
+               shipping_postcode = $9,
+               shipping_country = $10,
+               customer_phone = $11,
                updated_at = CURRENT_TIMESTAMP
              WHERE wc_id = $1
              RETURNING *`,
@@ -184,15 +197,20 @@ class Order {
               customerName,
               order.billing.email,
               order.total,
-              order.date_created
+              order.date_created,
+              shippingAddress,
+              shippingCity,
+              shippingPostcode,
+              shippingCountry,
+              customerPhone
             ]
           );
           console.log(`⏸️ Commande #${order.number} préservée avec statut local: ${existingOrder.rows[0].status}`);
         } else {
           // Insérer ou mettre à jour normalement (y compris le statut)
           result = await client.query(
-            `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date, shipping_address, shipping_city, shipping_postcode, shipping_country, customer_phone)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              ON CONFLICT (wc_id)
              DO UPDATE SET
                order_number = EXCLUDED.order_number,
@@ -201,6 +219,11 @@ class Order {
                status = EXCLUDED.status,
                total = EXCLUDED.total,
                order_date = EXCLUDED.order_date,
+               shipping_address = EXCLUDED.shipping_address,
+               shipping_city = EXCLUDED.shipping_city,
+               shipping_postcode = EXCLUDED.shipping_postcode,
+               shipping_country = EXCLUDED.shipping_country,
+               customer_phone = EXCLUDED.customer_phone,
                updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
             [
@@ -210,7 +233,12 @@ class Order {
               order.billing.email,
               order.status,
               order.total,
-              order.date_created
+              order.date_created,
+              shippingAddress,
+              shippingCity,
+              shippingPostcode,
+              shippingCountry,
+              customerPhone
             ]
           );
         }

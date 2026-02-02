@@ -18,7 +18,20 @@
         <div class="customer-info">
           <h3>Client</h3>
           <p class="customer-name">{{ order.customer_name }}</p>
-          <p class="customer-email">{{ order.customer_email }}</p>
+          <p v-if="order.customer_phone" class="customer-phone">
+            <a :href="'tel:' + order.customer_phone">📞 {{ order.customer_phone }}</a>
+          </p>
+          <p class="customer-email">
+            <a :href="'mailto:' + order.customer_email">✉️ {{ order.customer_email }}</a>
+          </p>
+          <div v-if="order.shipping_address || order.shipping_city" class="customer-address">
+            <p class="address-label">📍 Adresse de livraison :</p>
+            <p v-if="order.shipping_address">{{ order.shipping_address }}</p>
+            <p v-if="order.shipping_city || order.shipping_postcode">
+              {{ order.shipping_postcode }} {{ order.shipping_city }}
+              <span v-if="order.shipping_country"> - {{ order.shipping_country }}</span>
+            </p>
+          </div>
         </div>
         <div class="order-stats">
           <div class="stat">
@@ -764,10 +777,48 @@ async function unpickItem(item) {
   margin: 0 0 0.25rem 0;
 }
 
+.customer-phone {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.customer-phone a,
+.customer-email a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.customer-phone a:hover,
+.customer-email a:hover {
+  color: var(--secondary);
+  text-decoration: underline;
+}
+
 .customer-email {
   color: var(--text-secondary);
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+.customer-address {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.customer-address .address-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.25rem 0;
+  font-weight: 600;
+}
+
+.customer-address p {
   margin: 0;
   font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.4;
 }
 
 .order-stats {
