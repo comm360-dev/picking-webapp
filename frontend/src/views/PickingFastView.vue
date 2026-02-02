@@ -79,7 +79,10 @@
 
         <!-- Scanner -->
         <div class="scanner-section">
-          <QRScanner @scan="handleScan" class="scanner-wrapper" />
+          <QRScanner v-if="!scannerPaused" @scan="handleScan" class="scanner-wrapper" />
+          <div v-else class="scanner-paused">
+            <span>Scanner en pause...</span>
+          </div>
 
           <div class="manual-input">
             <input
@@ -108,6 +111,20 @@
           📋 Voir la liste complète
         </button>
       </div>
+
+      <!-- Overlay de confirmation après scan réussi -->
+      <transition name="success-overlay">
+        <div v-if="successOverlay" class="success-overlay">
+          <div class="success-content">
+            <div class="success-icon">✓</div>
+            <h2 class="success-title">{{ successOverlay.productName }}</h2>
+            <p class="success-subtitle">Article scanné</p>
+            <p class="success-next" v-if="successOverlay.nextProduct">
+              Prochain : <strong>{{ successOverlay.nextProduct }}</strong>
+            </p>
+          </div>
+        </div>
+      </transition>
 
       <!-- Feedback -->
       <transition name="fade">
@@ -167,6 +184,8 @@ const showMissingModal = ref(false)
 const outOfStock = ref(false)
 const missingNotes = ref('')
 const currentItemIndex = ref(0)
+const scannerPaused = ref(false)
+const successOverlay = ref(null)
 
 // Liste des articles non encore complètement scannés (ni picked ni missing)
 // Triés par QR code pour optimiser le parcours dans l'entrepôt
@@ -299,6 +318,9 @@ function validateManualSku() {
 
 async function markItemAsPicked(item) {
   try {
+    // Pause le scanner immédiatement
+    scannerPaused.value = true
+
     const newPickedQty = (item.picked_quantity || 0) + 1
     const isPicked = newPickedQty >= item.quantity
     const orderId = parseInt(route.params.id)
@@ -315,13 +337,24 @@ async function markItemAsPicked(item) {
 
     feedbackService.success()
 
-    if (isPicked) {
-      showFeedback('✅ Article terminé !', 'success')
-      // Passer automatiquement au prochain article
-      // L'index reste le même car l'item sort de unpickedItems
-    } else {
-      showFeedback(`✅ ${newPickedQty}/${item.quantity}`, 'success')
+    // Trouver le prochain article (après que l'item actuel sorte de unpickedItems)
+    const remainingItems = order.value.items
+      .filter(i => !i.is_picked && !i.is_missing && i.id !== item.id)
+      .sort((a, b) => (a.qr_code || '').localeCompare(b.qr_code || '', 'fr', { numeric: true, sensitivity: 'base' }))
+    const nextItem = remainingItems[0]
+
+    // Afficher l'overlay de confirmation
+    successOverlay.value = {
+      productName: item.name,
+      nextProduct: isPicked ? (nextItem?.name || null) : item.name
     }
+
+    // Masquer l'overlay et réactiver le scanner après un délai
+    const pauseDuration = isPicked ? 2500 : 1500 // Plus long si on passe à un autre article
+    setTimeout(() => {
+      successOverlay.value = null
+      scannerPaused.value = false
+    }, pauseDuration)
 
     if (syncService.isOnline()) {
       api.put(`/orders/${orderId}/items/${item.id}/pick`, {
@@ -332,6 +365,9 @@ async function markItemAsPicked(item) {
     console.error('Erreur markItemAsPicked:', err)
     feedbackService.error()
     showFeedback('❌ Erreur', 'error')
+    // Réactiver le scanner en cas d'erreur
+    scannerPaused.value = false
+    successOverlay.value = null
   }
 }
 
@@ -912,5 +948,90 @@ function goToFullView() {
   color: white;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Scanner en pause */
+.scanner-paused {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* Overlay de confirmation */
+.success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(34, 197, 94, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.success-content {
+  text-align: center;
+  color: white;
+  padding: 2rem;
+}
+
+.success-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: pop 0.3s ease-out;
+}
+
+@keyframes pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.success-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.success-subtitle {
+  font-size: 1.125rem;
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+}
+
+.success-next {
+  font-size: 1rem;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  display: inline-block;
+}
+
+.success-next strong {
+  display: block;
+  font-size: 1.125rem;
+  margin-top: 0.25rem;
+}
+
+/* Transition pour l'overlay */
+.success-overlay-enter-active,
+.success-overlay-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.success-overlay-enter-from,
+.success-overlay-leave-to {
+  opacity: 0;
 }
 </style>
