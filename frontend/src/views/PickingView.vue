@@ -286,11 +286,11 @@ const hasMissingItems = computed(() => {
   return order.value.items.some(item => item.is_missing)
 })
 
-// Articles triés par ordre alphabétique pour optimiser le parcours dans l'entrepôt
+// Articles triés par QR code pour optimiser le parcours dans l'entrepôt
 const sortedItems = computed(() => {
   if (!order.value?.items) return []
   return [...order.value.items].sort((a, b) =>
-    (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' })
+    (a.qr_code || '').localeCompare(b.qr_code || '', 'fr', { numeric: true, sensitivity: 'base' })
   )
 })
 
