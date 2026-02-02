@@ -146,9 +146,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
-import syncService from '../services/syncService'
+import syncService from '../services/sync'
 import { ordersDB, orderItemsDB } from '../services/db'
-import feedbackService from '../services/feedbackService'
+import feedbackService from '../services/feedback'
 import { useOrdersStore } from '../stores/orders'
 import QRScanner from '../components/QRScanner.vue'
 
