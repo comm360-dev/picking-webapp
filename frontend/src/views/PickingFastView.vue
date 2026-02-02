@@ -169,9 +169,12 @@ const missingNotes = ref('')
 const currentItemIndex = ref(0)
 
 // Liste des articles non encore complètement scannés (ni picked ni missing)
+// Triés par ordre alphabétique pour optimiser le parcours dans l'entrepôt
 const unpickedItems = computed(() => {
   if (!order.value?.items) return []
-  return order.value.items.filter(item => !item.is_picked && !item.is_missing)
+  return order.value.items
+    .filter(item => !item.is_picked && !item.is_missing)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }))
 })
 
 // Article actuel à scanner

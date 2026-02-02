@@ -60,7 +60,7 @@
 
         <div class="items-list">
           <div
-            v-for="item in order.items"
+            v-for="item in sortedItems"
             :key="item.id"
             class="item-card"
             :class="{ 'picked': item.is_picked, 'current': currentItemId === item.id }"
@@ -284,6 +284,14 @@ const allItemsPicked = computed(() => {
 const hasMissingItems = computed(() => {
   if (!order.value?.items) return false
   return order.value.items.some(item => item.is_missing)
+})
+
+// Articles triés par ordre alphabétique pour optimiser le parcours dans l'entrepôt
+const sortedItems = computed(() => {
+  if (!order.value?.items) return []
+  return [...order.value.items].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' })
+  )
 })
 
 const isOnHold = computed(() => {
