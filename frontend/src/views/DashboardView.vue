@@ -213,7 +213,7 @@ function viewOrder(order) {
 }
 
 function startPicking(order) {
-  router.push(`/picking/${order.id}`)
+  router.push(`/picking/${order.id}/fast`)
 }
 
 function handleLogout() {

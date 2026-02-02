@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import PickingView from '../views/PickingView.vue'
+import PickingFastView from '../views/PickingFastView.vue'
 import AdminQRView from '../views/AdminQRView.vue'
 import HistoryView from '../views/HistoryView.vue'
 
@@ -29,6 +30,12 @@ const router = createRouter({
       path: '/picking/:id',
       name: 'picking',
       component: PickingView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/picking/:id/fast',
+      name: 'picking-fast',
+      component: PickingFastView,
       meta: { requiresAuth: true }
     },
     {
