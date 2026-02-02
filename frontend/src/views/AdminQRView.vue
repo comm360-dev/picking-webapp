@@ -408,36 +408,45 @@ async function printSingleQR(product) {
           }
           .qr-item {
             border: 2px solid #333;
-            padding: 20px;
-            text-align: center;
-            max-width: 300px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
             border-radius: 12px;
+            max-width: 500px;
           }
-          .qr-item img {
-            width: 250px;
-            height: 250px;
-            margin: 15px 0;
+          .qr-image {
+            flex-shrink: 0;
+          }
+          .qr-image img {
+            width: 120px;
+            height: 120px;
+            display: block;
+          }
+          .qr-info {
+            flex: 1;
+            text-align: left;
           }
           .qr-sku {
             font-weight: bold;
-            font-size: 22px;
-            margin-bottom: 8px;
+            font-size: 24px;
+            margin-bottom: 6px;
           }
           .qr-name {
             font-size: 16px;
-            color: #666;
-            margin-bottom: 15px;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.3;
           }
           .qr-code-text {
             font-family: monospace;
-            font-size: 14px;
+            font-size: 12px;
             color: #999;
-            margin-top: 10px;
           }
           .qr-location {
-            font-size: 16px;
+            font-size: 14px;
             color: #10B981;
-            margin-top: 8px;
+            margin-top: 6px;
             font-weight: 600;
           }
           .print-btn {
@@ -455,11 +464,15 @@ async function printSingleQR(product) {
       <body>
         <div>
           <div class="qr-item">
-            <div class="qr-sku">${product.sku}</div>
-            <div class="qr-name">${product.name}</div>
-            <img src="${qrDataUrl}" alt="QR Code ${product.sku}">
-            <div class="qr-code-text">${product.qr_code}</div>
-            ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+            <div class="qr-image">
+              <img src="${qrDataUrl}" alt="QR Code ${product.sku}">
+            </div>
+            <div class="qr-info">
+              <div class="qr-sku">${product.sku}</div>
+              <div class="qr-name">${product.name}</div>
+              <div class="qr-code-text">${product.qr_code}</div>
+              ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+            </div>
           </div>
           <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer</button>
         </div>
@@ -542,49 +555,69 @@ async function printAllQR() {
         <title>Impression QR Codes</title>
         <style>
           @media print {
-            @page { margin: 1cm; }
+            @page { margin: 0.5cm; }
           }
           body {
             font-family: Arial, sans-serif;
-            padding: 20px;
+            padding: 10px;
+          }
+          h1 {
+            font-size: 18px;
+            margin-bottom: 15px;
           }
           .qr-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            page-break-inside: avoid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
           }
           .qr-item {
-            border: 2px solid #333;
-            padding: 15px;
-            text-align: center;
+            border: 1px solid #333;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             page-break-inside: avoid;
-            border-radius: var(--radius-md);
+            border-radius: 8px;
           }
-          .qr-item img {
-            width: 200px;
-            height: 200px;
-            margin: 10px 0;
+          .qr-image {
+            flex-shrink: 0;
+          }
+          .qr-image img {
+            width: 80px;
+            height: 80px;
+            display: block;
+          }
+          .qr-info {
+            flex: 1;
+            text-align: left;
+            overflow: hidden;
           }
           .qr-sku {
             font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 5px;
+            font-size: 14px;
+            margin-bottom: 3px;
           }
           .qr-name {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
+            font-size: 11px;
+            color: #333;
+            margin-bottom: 4px;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
           }
           .qr-code-text {
             font-family: monospace;
-            font-size: 12px;
+            font-size: 9px;
             color: #999;
           }
           .qr-location {
-            font-size: 14px;
-            color: var(--success);
-            margin-top: 5px;
+            font-size: 10px;
+            color: #10B981;
+            margin-top: 3px;
+            font-weight: 600;
           }
         </style>
       </head>
@@ -597,17 +630,21 @@ async function printAllQR() {
     for (const product of products.value) {
       if (product.qr_code) {
         const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
-          width: 300,
-          margin: 2
+          width: 200,
+          margin: 1
         })
 
         printWindow.document.write(`
           <div class="qr-item">
-            <div class="qr-sku">SKU: ${product.sku}</div>
-            <div class="qr-name">${product.name}</div>
-            <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
-            <div class="qr-code-text">${product.qr_code}</div>
-            ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+            <div class="qr-image">
+              <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
+            </div>
+            <div class="qr-info">
+              <div class="qr-sku">${product.sku}</div>
+              <div class="qr-name">${product.name}</div>
+              <div class="qr-code-text">${product.qr_code}</div>
+              ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+            </div>
           </div>
         `)
       }
