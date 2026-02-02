@@ -626,28 +626,31 @@ async function printAllQR() {
         <div class="qr-grid">
     `)
 
-    // Générer et ajouter chaque QR code
-    for (const product of products.value) {
-      if (product.qr_code) {
-        const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
-          width: 200,
-          margin: 1
-        })
+    // Trier les produits par code QR (ordre alphabétique)
+    const sortedProducts = [...products.value]
+      .filter(p => p.qr_code)
+      .sort((a, b) => a.qr_code.localeCompare(b.qr_code, 'fr', { numeric: true }))
 
-        printWindow.document.write(`
-          <div class="qr-item">
-            <div class="qr-image">
-              <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
-            </div>
-            <div class="qr-info">
-              <div class="qr-sku">${product.sku}</div>
-              <div class="qr-name">${product.name}</div>
-              <div class="qr-code-text">${product.qr_code}</div>
-              ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
-            </div>
+    // Générer et ajouter chaque QR code
+    for (const product of sortedProducts) {
+      const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
+        width: 200,
+        margin: 1
+      })
+
+      printWindow.document.write(`
+        <div class="qr-item">
+          <div class="qr-image">
+            <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
           </div>
-        `)
-      }
+          <div class="qr-info">
+            <div class="qr-sku">${product.sku}</div>
+            <div class="qr-name">${product.name}</div>
+            <div class="qr-code-text">${product.qr_code}</div>
+            ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
+          </div>
+        </div>
+      `)
     }
 
     printWindow.document.write(`
