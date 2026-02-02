@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number VARCHAR(100),
   customer_name VARCHAR(255),
   customer_email VARCHAR(255),
+  customer_phone VARCHAR(50),
+  shipping_address TEXT,
+  shipping_city VARCHAR(255),
+  shipping_postcode VARCHAR(20),
+  shipping_country VARCHAR(100),
   status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'picking', 'completed', 'failed', 'on-hold')),
   total DECIMAL(10, 2),
   order_date TIMESTAMP,
@@ -44,6 +49,13 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration 003: Ajouter les colonnes d'adresse si elles n'existent pas
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_city VARCHAR(255);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_postcode VARCHAR(20);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_country VARCHAR(100);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);
 
 -- Table: order_items (articles de commande)
 CREATE TABLE IF NOT EXISTS order_items (

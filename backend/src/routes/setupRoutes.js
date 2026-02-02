@@ -240,4 +240,25 @@ router.get('/fix-orders-table', async (req, res) => {
   }
 });
 
+// Route pour ajouter les colonnes d'adresse client sur orders
+router.get('/add-customer-address', async (req, res) => {
+  try {
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_city VARCHAR(255)`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_postcode VARCHAR(20)`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_country VARCHAR(100)`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50)`);
+
+    res.json({
+      success: true,
+      message: 'Colonnes adresse client ajoutées à orders (shipping_address, shipping_city, shipping_postcode, shipping_country, customer_phone)'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
