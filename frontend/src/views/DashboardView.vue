@@ -74,6 +74,16 @@
           </div>
         </div>
 
+        <div class="search-bar">
+          <input
+            v-model="searchQuery"
+            type="text"
+            :placeholder="activeTab === 'pending' ? 'Rechercher par n° commande, nom client...' : 'Rechercher par n° commande, nom client, produit manquant...'"
+            class="search-input"
+          />
+          <button v-if="searchQuery" @click="searchQuery = ''" class="btn-clear-search">✕</button>
+        </div>
+
         <div v-if="ordersStore.loading" class="loading">
           Chargement des commandes...
         </div>
@@ -92,9 +102,19 @@
           <p class="hint">Les commandes avec des articles en rupture de stock apparaîtront ici</p>
         </div>
 
+        <div v-else-if="activeTab === 'pending' && filteredPendingOrders.length === 0" class="empty-state">
+          <p>Aucune commande trouvée pour "{{ searchQuery }}"</p>
+          <p class="hint">Essayez un autre terme de recherche</p>
+        </div>
+
+        <div v-else-if="activeTab === 'on-hold' && filteredOnHoldOrders.length === 0" class="empty-state">
+          <p>Aucune commande trouvée pour "{{ searchQuery }}"</p>
+          <p class="hint">Essayez un autre terme de recherche</p>
+        </div>
+
         <div v-else class="orders-grid">
           <OrderCard
-            v-for="order in activeTab === 'pending' ? ordersStore.pendingOrders : ordersStore.onHoldOrders"
+            v-for="order in activeTab === 'pending' ? filteredPendingOrders : filteredOnHoldOrders"
             :key="order.id"
             :order="order"
             @view="viewOrder"
@@ -107,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
@@ -121,6 +141,47 @@ const syncMessage = ref('')
 const syncMessageType = ref('')
 const sortOrder = ref('asc') // Par défaut : plus anciennes d'abord
 const activeTab = ref('pending') // 'pending' ou 'on-hold'
+const searchQuery = ref('')
+
+// Filtrer les commandes par recherche
+const filteredPendingOrders = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return ordersStore.pendingOrders
+  }
+  const query = searchQuery.value.toLowerCase().trim()
+  return ordersStore.pendingOrders.filter(order => {
+    // Recherche par numéro de commande
+    if (order.order_number?.toString().toLowerCase().includes(query)) return true
+    // Recherche par nom du client
+    if (order.customer_name?.toLowerCase().includes(query)) return true
+    // Recherche par email du client
+    if (order.customer_email?.toLowerCase().includes(query)) return true
+    return false
+  })
+})
+
+const filteredOnHoldOrders = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return ordersStore.onHoldOrders
+  }
+  const query = searchQuery.value.toLowerCase().trim()
+  return ordersStore.onHoldOrders.filter(order => {
+    // Recherche par numéro de commande
+    if (order.order_number?.toString().toLowerCase().includes(query)) return true
+    // Recherche par nom du client
+    if (order.customer_name?.toLowerCase().includes(query)) return true
+    // Recherche par email du client
+    if (order.customer_email?.toLowerCase().includes(query)) return true
+    // Recherche par produit manquant (si items disponibles)
+    if (order.items && Array.isArray(order.items)) {
+      const hasMissingMatch = order.items.some(item =>
+        item.is_missing && item.name?.toLowerCase().includes(query)
+      )
+      if (hasMissingMatch) return true
+    }
+    return false
+  })
+})
 
 onMounted(async () => {
   await ordersStore.fetchOrders()
@@ -504,6 +565,60 @@ function handleLogout() {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(12, 180, 212, 0.1);
+}
+
+.search-bar {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1rem 3rem 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-input:hover {
+  border-color: var(--primary-light);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(12, 180, 212, 0.1);
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-secondary);
+  border: none;
+  color: var(--text-secondary);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-clear-search:hover {
+  background: var(--error);
+  color: white;
 }
 
 .loading,
