@@ -30,6 +30,53 @@ function requireSetupKey(req, res, next) {
 // Toutes les routes de setup nécessitent la clé secrète
 router.use(requireSetupKey);
 
+// Route pour réinitialiser complètement la base de données (DROP + CREATE)
+router.get('/reset-db', async (req, res) => {
+  try {
+    console.log('🗑️ Suppression de toutes les tables...');
+
+    await pool.query(`
+      DROP TABLE IF EXISTS order_history CASCADE;
+      DROP TABLE IF EXISTS inventory_logs CASCADE;
+      DROP TABLE IF EXISTS sync_logs CASCADE;
+      DROP TABLE IF EXISTS qr_mappings CASCADE;
+      DROP TABLE IF EXISTS order_items CASCADE;
+      DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS products CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+      DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+    `);
+
+    console.log('✅ Tables supprimées');
+
+    // Lire et exécuter le script de création
+    const sqlPath = path.join(__dirname, '../config/init-db.sql');
+    let sql = fs.readFileSync(sqlPath, 'utf8');
+
+    const adminPwd = process.env.ADMIN_PASSWORD;
+    if (!adminPwd) {
+      return res.status(400).json({ success: false, error: 'Variable ADMIN_PASSWORD non configurée' });
+    }
+
+    const adminPassword = await bcrypt.hash(adminPwd, 10);
+    sql = sql.replace('$2b$10$YourHashedPasswordHere', adminPassword);
+
+    console.log('📝 Recréation des tables...');
+    await pool.query(sql);
+
+    console.log('✅ Base de données réinitialisée avec succès!');
+
+    res.json({
+      success: true,
+      message: 'Base de données réinitialisée avec succès (toutes les données ont été supprimées)',
+      admin: { email: 'admin@picking.local' }
+    });
+  } catch (error) {
+    console.error('❌ Erreur reset-db:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Route temporaire pour initialiser la base de données
 router.get('/init-db', async (req, res) => {
   try {
