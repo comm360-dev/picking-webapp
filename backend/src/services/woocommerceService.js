@@ -2,9 +2,8 @@ const WooCommerceRestApi = require('@woocommerce/woocommerce-rest-api').default;
 const https = require('https');
 require('dotenv').config();
 
-// Créer un agent HTTPS qui accepte les certificats auto-signés
 const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
+  rejectUnauthorized: process.env.NODE_ENV === 'production'
 });
 
 // Données mockées pour le développement

@@ -5,8 +5,32 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const pool = require('../config/database');
 
+// Middleware de protection des routes de setup
+function requireSetupKey(req, res, next) {
+  const setupKey = req.headers['x-setup-key'] || req.query.key;
+  const expectedKey = process.env.SETUP_SECRET_KEY;
+
+  if (!expectedKey) {
+    return res.status(503).json({
+      success: false,
+      error: 'SETUP_SECRET_KEY non configurée sur le serveur'
+    });
+  }
+
+  if (setupKey !== expectedKey) {
+    return res.status(403).json({
+      success: false,
+      error: 'Clé de setup invalide'
+    });
+  }
+
+  next();
+}
+
+// Toutes les routes de setup nécessitent la clé secrète
+router.use(requireSetupKey);
+
 // Route temporaire pour initialiser la base de données
-// À SUPPRIMER après l'initialisation !
 router.get('/init-db', async (req, res) => {
   try {
     console.log('🔧 Initialisation de la base de données...');
@@ -15,9 +39,13 @@ router.get('/init-db', async (req, res) => {
     const sqlPath = path.join(__dirname, '../config/init-db.sql');
     let sql = fs.readFileSync(sqlPath, 'utf8');
 
-    // Générer un hash pour le mot de passe admin
+    // Générer un hash pour le mot de passe admin depuis la variable d'environnement
+    const adminPwd = process.env.ADMIN_PASSWORD;
+    if (!adminPwd) {
+      return res.status(400).json({ success: false, error: 'Variable ADMIN_PASSWORD non configurée sur le serveur' });
+    }
     console.log('🔐 Génération du mot de passe admin...');
-    const adminPassword = await bcrypt.hash('admin123', 10);
+    const adminPassword = await bcrypt.hash(adminPwd, 10);
 
     // Remplacer le placeholder par le vrai hash
     sql = sql.replace('$2b$10$YourHashedPasswordHere', adminPassword);
@@ -31,9 +59,7 @@ router.get('/init-db', async (req, res) => {
       success: true,
       message: 'Base de données initialisée avec succès!',
       admin: {
-        email: 'admin@picking.local',
-        password: 'admin123',
-        warning: 'Changez ce mot de passe en production!'
+        email: 'admin@picking.local'
       }
     });
 
@@ -195,8 +221,13 @@ router.get('/create-preparateur', async (req, res) => {
       });
     }
 
-    // Créer le compte
-    const passwordHash = await bcrypt.hash('preparateur123', 10);
+    // Créer le compte avec le mot de passe depuis la variable d'environnement
+    const preparateurPwd = process.env.PREPARATEUR_PASSWORD;
+    if (!preparateurPwd) {
+      return res.status(400).json({ success: false, error: 'Variable PREPARATEUR_PASSWORD non configurée sur le serveur' });
+    }
+
+    const passwordHash = await bcrypt.hash(preparateurPwd, 10);
     await pool.query(
       'INSERT INTO users (email, password, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5)',
       ['preparateur@picking.com', passwordHash, 'preparateur', 'Jean', 'Dupont']
@@ -207,7 +238,6 @@ router.get('/create-preparateur', async (req, res) => {
       message: 'Compte préparateur créé avec succès',
       credentials: {
         email: 'preparateur@picking.com',
-        password: 'preparateur123',
         role: 'preparateur'
       }
     });

@@ -3,9 +3,8 @@ const router = express.Router();
 const axios = require('axios');
 const https = require('https');
 
-// Agent HTTPS qui accepte les certificats auto-signés
 const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
+  rejectUnauthorized: process.env.NODE_ENV === 'production'
 });
 
 // Proxy pour charger les images WooCommerce sans problèmes CORS/Mixed Content
@@ -15,6 +14,20 @@ router.get('/', async (req, res) => {
 
     if (!imageUrl) {
       return res.status(400).json({ error: 'URL parameter is required' });
+    }
+
+    // Validation : n'autoriser que les URLs d'images du domaine WooCommerce
+    const wcUrl = process.env.WC_URL;
+    if (wcUrl) {
+      try {
+        const parsedUrl = new URL(imageUrl);
+        const parsedWcUrl = new URL(wcUrl);
+        if (parsedUrl.hostname !== parsedWcUrl.hostname) {
+          return res.status(403).json({ error: 'Domaine non autorisé' });
+        }
+      } catch (e) {
+        return res.status(400).json({ error: 'URL invalide' });
+      }
     }
 
     // Récupérer l'image depuis WooCommerce
