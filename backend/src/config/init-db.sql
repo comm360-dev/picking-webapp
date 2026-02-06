@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS products (
   stock_quantity INTEGER,
   location VARCHAR(100),
   qr_code VARCHAR(255) UNIQUE,
+  image_url TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -45,17 +46,14 @@ CREATE TABLE IF NOT EXISTS orders (
   order_date TIMESTAMP,
   picked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   picked_at TIMESTAMP,
+  picking_duration INTEGER,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  prepared_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   synced BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- Migration 003: Ajouter les colonnes d'adresse si elles n'existent pas
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_city VARCHAR(255);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_postcode VARCHAR(20);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_country VARCHAR(100);
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);
 
 -- Table: order_items (articles de commande)
 CREATE TABLE IF NOT EXISTS order_items (
@@ -65,6 +63,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INTEGER NOT NULL,
   picked_quantity INTEGER DEFAULT 0,
   is_picked BOOLEAN DEFAULT false,
+  is_missing BOOLEAN DEFAULT false,
+  notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,6 +78,16 @@ CREATE TABLE IF NOT EXISTS qr_mappings (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (sku) REFERENCES products(sku) ON DELETE CASCADE
+);
+
+-- Table: order_history (historique des actions sur les commandes)
+CREATE TABLE IF NOT EXISTS order_history (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action VARCHAR(50) NOT NULL,
+  details JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: sync_logs (logs de synchronisation)
@@ -111,6 +121,8 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX idx_qr_mappings_qr_code ON qr_mappings(qr_code);
 CREATE INDEX idx_qr_mappings_sku ON qr_mappings(sku);
+CREATE INDEX idx_order_history_order_id ON order_history(order_id);
+CREATE INDEX idx_order_history_user_id ON order_history(user_id);
 
 -- Fonction pour mettre à jour updated_at automatiquement
 CREATE OR REPLACE FUNCTION update_updated_at_column()
