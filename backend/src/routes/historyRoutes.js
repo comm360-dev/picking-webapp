@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const HistoryController = require('../controllers/historyController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, isAdmin } = require('../middleware/auth');
 
 // Toutes les routes nécessitent l'authentification
 router.use(authMiddleware);
@@ -19,6 +19,6 @@ router.get('/user', HistoryController.getUserHistory);
 router.get('/statistics', HistoryController.getStatistics);
 
 // GET /api/history/performance - Performance des utilisateurs (admin seulement)
-router.get('/performance', HistoryController.getUserPerformance);
+router.get('/performance', isAdmin, HistoryController.getUserPerformance);
 
 module.exports = router;

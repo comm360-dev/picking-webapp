@@ -5,7 +5,8 @@ class FeedbackService {
     // Créer les sons de feedback
     this.sounds = {
       success: this.createBeep(800, 0.1, 'sine'), // Son aigu court
-      error: this.createBeep(200, 0.3, 'sawtooth') // Son grave long
+      error: this.createBeep(200, 0.3, 'sawtooth'), // Son grave long
+      warning: this.createBeep(500, 0.2, 'triangle') // Son moyen
     }
   }
 
@@ -72,6 +73,16 @@ class FeedbackService {
   error() {
     this.sounds.error()
     this.vibrateError()
+  }
+
+  /**
+   * Feedback complet d'avertissement
+   */
+  warning() {
+    this.sounds.warning()
+    if ('vibrate' in navigator) {
+      navigator.vibrate([100, 50, 100])
+    }
   }
 
   /**

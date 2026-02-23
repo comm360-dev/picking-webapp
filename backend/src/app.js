@@ -53,8 +53,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL, 'https://picking-app.onrender.com']
-    : true, // En dev, accepte toutes les origines
+    ? [process.env.FRONTEND_URL].filter(Boolean)
+    : true,
   credentials: true
 }));
 
@@ -93,7 +93,10 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  res.status(500).json({
+    message: 'Erreur serveur',
+    ...(process.env.NODE_ENV !== 'production' && { error: err.message })
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

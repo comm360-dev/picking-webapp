@@ -49,6 +49,10 @@ const router = createRouter({
       name: 'history',
       component: HistoryView,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/dashboard'
     }
   ],
 })
