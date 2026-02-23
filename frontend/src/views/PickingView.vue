@@ -327,15 +327,6 @@ async function loadOrder() {
         const response = await api.get(`/orders/${orderId}`)
         order.value = response.data
 
-        // LOG: Vérifier les images reçues
-        console.log('🖼️ PICKING VIEW - Commande chargée:', response.data.order_number)
-        if (response.data.items) {
-          response.data.items.forEach(item => {
-            console.log(`  Item: ${item.name}`)
-            console.log(`    - image_url: ${item.image_url ? 'OUI (' + item.image_url.substring(0, 60) + '...)' : 'NON'}`)
-          })
-        }
-
         // Sauvegarder dans le cache
         await ordersDB.put({ ...response.data, synced: true })
 

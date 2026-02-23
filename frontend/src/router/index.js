@@ -65,7 +65,6 @@ router.beforeEach((to, from, next) => {
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
     next('/dashboard')
   } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    alert('Accès réservé aux administrateurs')
     next('/dashboard')
   } else {
     next()

@@ -44,25 +44,20 @@ export async function markSyncComplete(id) {
 }
 
 export async function cleanDuplicateItems() {
-  // Nettoyer les doublons d'items en ne gardant que les plus récents par ID
   const allItems = await orderItemsDB.toArray()
   const itemsByIdAndOrder = new Map()
 
-  // Grouper par order_id + item.id
   allItems.forEach(item => {
     const key = `${item.order_id}_${item.id}`
-    const existing = itemsByIdAndOrder.get(key)
-
-    if (!existing || !itemsByIdAndOrder.has(key)) {
+    if (!itemsByIdAndOrder.has(key)) {
       itemsByIdAndOrder.set(key, item)
     }
   })
 
-  // Supprimer tous les items et réinsérer les uniques
-  await orderItemsDB.clear()
-  await orderItemsDB.bulkAdd(Array.from(itemsByIdAndOrder.values()))
-
-  console.log(`🧹 Nettoyage: ${allItems.length} items -> ${itemsByIdAndOrder.size} items uniques`)
+  if (itemsByIdAndOrder.size < allItems.length) {
+    await orderItemsDB.clear()
+    await orderItemsDB.bulkAdd(Array.from(itemsByIdAndOrder.values()))
+  }
 }
 
 export default db
