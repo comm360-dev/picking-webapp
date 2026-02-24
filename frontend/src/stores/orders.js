@@ -22,9 +22,10 @@ export const useOrdersStore = defineStore('orders', () => {
   }
 
   const pendingOrders = computed(() => {
-    // Seulement "processing" = commandes payées à préparer
+    // "processing" = commandes payées à préparer
+    // "preparation" = statut custom WooCommerce (commandes en préparation)
     // "pending" = en attente de paiement (ne pas afficher)
-    const filtered = orders.value.filter(o => o.status === 'processing')
+    const filtered = orders.value.filter(o => o.status === 'processing' || o.status === 'preparation')
     return sortByDate(filtered, sortOrder.value)
   })
 
