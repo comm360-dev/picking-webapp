@@ -33,9 +33,13 @@ class OrderController {
       const products = await Product.bulkUpsert(productsData);
       console.log(`✅ ${products.length} produits synchronisés`);
 
-      // Récupérer les commandes processing depuis WooCommerce
-      const wcOrders = await woocommerceService.getOrders({ status: 'processing' });
-      console.log(`📋 ${wcOrders.length} commandes processing récupérées`);
+      // Récupérer les commandes processing et preparation depuis WooCommerce
+      const [processingOrders, preparationOrders] = await Promise.all([
+        woocommerceService.getOrders({ status: 'processing' }),
+        woocommerceService.getOrders({ status: 'preparation' })
+      ]);
+      console.log(`📋 ${processingOrders.length} commandes processing, ${preparationOrders.length} commandes preparation`);
+      const wcOrders = [...processingOrders, ...preparationOrders];
       const orders = await Order.bulkUpsert(wcOrders);
       console.log(`✅ ${orders.length} commandes synchronisées`);
 
