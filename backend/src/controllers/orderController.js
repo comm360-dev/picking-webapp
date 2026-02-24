@@ -33,9 +33,10 @@ class OrderController {
       const products = await Product.bulkUpsert(productsData);
       console.log(`✅ ${products.length} produits synchronisés`);
 
-      // Récupérer les commandes depuis WooCommerce (seulement "processing" = payées)
+      // Récupérer les commandes depuis WooCommerce
+      // "processing" = payées, "preparation" = statut custom WooCommerce
       // Note: "pending" = en attente de paiement, on ne les veut pas
-      const wcOrders = await woocommerceService.getOrders({ status: 'processing' });
+      const wcOrders = await woocommerceService.getOrders({ status: 'processing,preparation' });
       const orders = await Order.bulkUpsert(wcOrders);
       console.log(`✅ ${orders.length} commandes synchronisées`);
 

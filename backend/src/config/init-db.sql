@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS orders (
   shipping_city VARCHAR(255),
   shipping_postcode VARCHAR(20),
   shipping_country VARCHAR(100),
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'picking', 'completed', 'failed', 'on-hold')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'preparation', 'picking', 'completed', 'failed', 'on-hold')),
   total DECIMAL(10, 2),
   order_date TIMESTAMP,
   picked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
