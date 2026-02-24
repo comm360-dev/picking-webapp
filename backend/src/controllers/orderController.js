@@ -36,7 +36,18 @@ class OrderController {
       // Récupérer les commandes depuis WooCommerce
       // "processing" = payées, "preparation" = statut custom WooCommerce
       // Note: "pending" = en attente de paiement, on ne les veut pas
-      const wcOrders = await woocommerceService.getOrders({ status: 'processing,preparation' });
+      const [processingOrders, preparationOrders] = await Promise.all([
+        woocommerceService.getOrders({ status: 'processing' }),
+        woocommerceService.getOrders({ status: 'preparation' }).catch(err => {
+          console.log('⚠️ Statut "preparation" non trouvé, essai avec "wc-preparation"...');
+          return woocommerceService.getOrders({ status: 'wc-preparation' }).catch(() => {
+            console.log('⚠️ Aucune commande en préparation trouvée');
+            return [];
+          });
+        })
+      ]);
+      console.log(`📋 ${processingOrders.length} commandes processing, ${preparationOrders.length} commandes preparation`);
+      const wcOrders = [...processingOrders, ...preparationOrders];
       const orders = await Order.bulkUpsert(wcOrders);
       console.log(`✅ ${orders.length} commandes synchronisées`);
 
