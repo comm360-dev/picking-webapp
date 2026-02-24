@@ -33,21 +33,19 @@ class OrderController {
       const products = await Product.bulkUpsert(productsData);
       console.log(`✅ ${products.length} produits synchronisés`);
 
-      // Récupérer les commandes depuis WooCommerce
-      // "processing" = payées, "preparation" = statut custom WooCommerce
-      // Note: "pending" = en attente de paiement, on ne les veut pas
-      const [processingOrders, preparationOrders] = await Promise.all([
-        woocommerceService.getOrders({ status: 'processing' }),
-        woocommerceService.getOrders({ status: 'preparation' }).catch(err => {
-          console.log('⚠️ Statut "preparation" non trouvé, essai avec "wc-preparation"...');
-          return woocommerceService.getOrders({ status: 'wc-preparation' }).catch(() => {
-            console.log('⚠️ Aucune commande en préparation trouvée');
-            return [];
-          });
-        })
-      ]);
-      console.log(`📋 ${processingOrders.length} commandes processing, ${preparationOrders.length} commandes preparation`);
-      const wcOrders = [...processingOrders, ...preparationOrders];
+      // Récupérer toutes les commandes depuis WooCommerce puis filtrer
+      // On utilise 'any' pour attraper les statuts custom (ex: preparation)
+      const allWcOrders = await woocommerceService.getOrders({ status: 'any' });
+
+      // Log tous les statuts trouvés pour debug
+      const statusCounts = {};
+      allWcOrders.forEach(o => { statusCounts[o.status] = (statusCounts[o.status] || 0) + 1; });
+      console.log('📋 Statuts WooCommerce trouvés:', JSON.stringify(statusCounts));
+
+      // Filtrer les statuts qu'on veut: processing et preparation (+ variantes)
+      const allowedStatuses = ['processing', 'preparation', 'wc-preparation'];
+      const wcOrders = allWcOrders.filter(o => allowedStatuses.includes(o.status));
+      console.log(`📋 ${wcOrders.length} commandes retenues (processing + preparation)`);
       const orders = await Order.bulkUpsert(wcOrders);
       console.log(`✅ ${orders.length} commandes synchronisées`);
 
