@@ -338,12 +338,18 @@ router.get('/add-customer-address', async (req, res) => {
   }
 });
 
-// Route temporaire de debug: lister les statuts WooCommerce
+// Route temporaire de debug: lister les statuts WooCommerce (1 seule page)
 router.get('/wc-statuses', async (req, res) => {
   try {
     const woocommerceService = require('../services/woocommerceService');
-    const orders = await woocommerceService.getOrders({ status: 'any', per_page: 100 });
+    // Appel direct à l'API WooCommerce (1 seule page, pas de pagination)
+    const response = await woocommerceService.api.get('orders', {
+      status: 'any',
+      per_page: 100,
+      page: 1
+    });
 
+    const orders = response.data;
     const statusCounts = {};
     orders.forEach(o => {
       statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
@@ -351,13 +357,8 @@ router.get('/wc-statuses', async (req, res) => {
 
     res.json({
       success: true,
-      totalOrders: orders.length,
-      statuses: statusCounts,
-      sampleByStatus: Object.keys(statusCounts).reduce((acc, status) => {
-        const sample = orders.find(o => o.status === status);
-        acc[status] = { id: sample.id, number: sample.number, status: sample.status };
-        return acc;
-      }, {})
+      totalOnPage: orders.length,
+      statuses: statusCounts
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
