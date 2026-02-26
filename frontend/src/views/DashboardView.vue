@@ -64,6 +64,13 @@
             >
               En attente ({{ ordersStore.onHoldOrders.length }})
             </button>
+            <button
+              class="tab"
+              :class="{ active: activeTab === 'completed', 'completed-tab': ordersStore.completedOrders.length > 0 }"
+              @click="activeTab = 'completed'"
+            >
+              Terminées ({{ ordersStore.completedOrders.length }})
+            </button>
           </div>
           <div class="sort-filter">
             <label for="sort-order">Trier par date :</label>
@@ -112,9 +119,19 @@
           <p class="hint">Essayez un autre terme de recherche</p>
         </div>
 
+        <div v-else-if="activeTab === 'completed' && ordersStore.completedOrders.length === 0" class="empty-state">
+          <p>Aucune commande terminée</p>
+          <p class="hint">Les commandes finalisées apparaîtront ici</p>
+        </div>
+
+        <div v-else-if="activeTab === 'completed' && filteredCompletedOrders.length === 0" class="empty-state">
+          <p>Aucune commande trouvée pour "{{ searchQuery }}"</p>
+          <p class="hint">Essayez un autre terme de recherche</p>
+        </div>
+
         <div v-else class="orders-grid">
           <OrderCard
-            v-for="order in activeTab === 'pending' ? filteredPendingOrders : filteredOnHoldOrders"
+            v-for="order in activeTab === 'pending' ? filteredPendingOrders : activeTab === 'on-hold' ? filteredOnHoldOrders : filteredCompletedOrders"
             :key="order.id"
             :order="order"
             @view="viewOrder"
@@ -140,7 +157,7 @@ const ordersStore = useOrdersStore()
 const syncMessage = ref('')
 const syncMessageType = ref('')
 const sortOrder = ref('asc') // Par défaut : plus anciennes d'abord
-const activeTab = ref('pending') // 'pending' ou 'on-hold'
+const activeTab = ref('pending') // 'pending', 'on-hold' ou 'completed'
 const searchQuery = ref('')
 
 // Filtrer les commandes par recherche
@@ -179,6 +196,19 @@ const filteredOnHoldOrders = computed(() => {
       )
       if (hasMissingMatch) return true
     }
+    return false
+  })
+})
+
+const filteredCompletedOrders = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return ordersStore.completedOrders
+  }
+  const query = searchQuery.value.toLowerCase().trim()
+  return ordersStore.completedOrders.filter(order => {
+    if (order.order_number?.toString().toLowerCase().includes(query)) return true
+    if (order.customer_name?.toLowerCase().includes(query)) return true
+    if (order.customer_email?.toLowerCase().includes(query)) return true
     return false
   })
 })
@@ -531,6 +561,19 @@ function handleLogout() {
   color: white;
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.tab.completed-tab {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--success);
+}
+
+.tab.completed-tab.active {
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .sort-filter {
