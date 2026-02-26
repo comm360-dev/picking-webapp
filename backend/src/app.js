@@ -30,9 +30,9 @@ async function runMigrations() {
           ALTER TABLE orders DROP CONSTRAINT orders_status_check;
         END IF;
 
-        -- Créer la nouvelle contrainte avec on-hold et preparation
+        -- Créer la nouvelle contrainte avec on-hold, preparation et cancelled
         ALTER TABLE orders ADD CONSTRAINT orders_status_check
-        CHECK (status IN ('pending', 'processing', 'preparation', 'picking', 'completed', 'failed', 'on-hold'));
+        CHECK (status IN ('pending', 'processing', 'preparation', 'picking', 'completed', 'failed', 'on-hold', 'cancelled'));
 
         RAISE NOTICE 'Migration on-hold appliquée';
       EXCEPTION

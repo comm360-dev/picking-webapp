@@ -60,11 +60,33 @@ class OrderController {
         }
       }
 
+      // Détecter les commandes locales qui ne sont plus actives sur WooCommerce
+      // (ex: annulées, remboursées, etc.)
+      const activeWcIds = wcOrders.map(o => o.id);
+      const localActiveOrders = await Order.getAll({ status: 'processing' });
+      const localPreparationOrders = await Order.getAll({ status: 'preparation' });
+      const allLocalActive = [...localActiveOrders, ...localPreparationOrders];
+
+      let cancelledCount = 0;
+      for (const localOrder of allLocalActive) {
+        if (!activeWcIds.includes(localOrder.wc_id)) {
+          // Cette commande n'est plus processing/preparation sur WooCommerce
+          await Order.updateStatus(localOrder.id, 'cancelled');
+          console.log(`🚫 Commande #${localOrder.order_number} marquée comme annulée (plus active sur WooCommerce)`);
+          cancelledCount++;
+        }
+      }
+
+      if (cancelledCount > 0) {
+        console.log(`🚫 ${cancelledCount} commande(s) marquée(s) comme annulée(s)`);
+      }
+
       res.json({
         message: 'Synchronisation réussie',
         stats: {
           products: products.length,
           orders: orders.length,
+          cancelled: cancelledCount,
           mockMode: woocommerceService.isMockMode()
         }
       });
