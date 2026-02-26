@@ -41,6 +41,22 @@ async function runMigrations() {
       END $$;
     `);
 
+    // Ajouter la colonne shipping_method si elle n'existe pas
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'shipping_method'
+        ) THEN
+          ALTER TABLE orders ADD COLUMN shipping_method VARCHAR(255);
+          RAISE NOTICE 'Colonne shipping_method ajoutée';
+        ELSE
+          RAISE NOTICE 'Colonne shipping_method déjà existante';
+        END IF;
+      END $$;
+    `);
+
     console.log('✅ Migrations terminées');
   } catch (error) {
     console.error('⚠️ Erreur migration (non bloquante):', error.message);

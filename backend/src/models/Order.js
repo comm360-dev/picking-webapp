@@ -162,6 +162,7 @@ class Order {
         const shippingPostcode = shipping.postcode || '';
         const shippingCountry = shipping.country || '';
         const customerPhone = order.billing.phone || '';
+        const shippingMethod = order.shipping_lines?.[0]?.method_title || '';
 
         // Vérifier si la commande existe déjà avec un statut local spécial (on-hold, completed)
         const existingOrder = await client.query(
@@ -188,6 +189,7 @@ class Order {
                shipping_postcode = $9,
                shipping_country = $10,
                customer_phone = $11,
+               shipping_method = $12,
                updated_at = CURRENT_TIMESTAMP
              WHERE wc_id = $1
              RETURNING *`,
@@ -202,15 +204,16 @@ class Order {
               shippingCity,
               shippingPostcode,
               shippingCountry,
-              customerPhone
+              customerPhone,
+              shippingMethod
             ]
           );
           console.log(`⏸️ Commande #${order.number} préservée avec statut local: ${existingOrder.rows[0].status}`);
         } else {
           // Insérer ou mettre à jour normalement (y compris le statut)
           result = await client.query(
-            `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date, shipping_address, shipping_city, shipping_postcode, shipping_country, customer_phone)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            `INSERT INTO orders (wc_id, order_number, customer_name, customer_email, status, total, order_date, shipping_address, shipping_city, shipping_postcode, shipping_country, customer_phone, shipping_method)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
              ON CONFLICT (wc_id)
              DO UPDATE SET
                order_number = EXCLUDED.order_number,
@@ -224,6 +227,7 @@ class Order {
                shipping_postcode = EXCLUDED.shipping_postcode,
                shipping_country = EXCLUDED.shipping_country,
                customer_phone = EXCLUDED.customer_phone,
+               shipping_method = EXCLUDED.shipping_method,
                updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
             [
@@ -238,7 +242,8 @@ class Order {
               shippingCity,
               shippingPostcode,
               shippingCountry,
-              customerPhone
+              customerPhone,
+              shippingMethod
             ]
           );
         }

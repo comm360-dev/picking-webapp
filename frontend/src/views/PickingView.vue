@@ -32,6 +32,10 @@
               <span v-if="order.shipping_country"> - {{ order.shipping_country }}</span>
             </p>
           </div>
+          <div v-if="order.shipping_method" class="shipping-method">
+            <p class="shipping-label">🚚 Mode de livraison :</p>
+            <p class="shipping-value">{{ order.shipping_method }}</p>
+          </div>
         </div>
         <div class="order-stats">
           <div class="stat">
@@ -182,7 +186,48 @@
       <div v-if="allItemsPicked && !hasMissingItems && !isOnHold" class="completion-section">
         <div class="completion-card">
           <h3>🎉 Tous les articles ont été scannés !</h3>
-          <p>Vous pouvez maintenant finaliser et passer à la commande suivante</p>
+
+          <div class="order-recap">
+            <h4>Récapitulatif de la commande</h4>
+            <div class="recap-details">
+              <div class="recap-row">
+                <span class="recap-label">Commande</span>
+                <span class="recap-value">#{{ order.order_number }}</span>
+              </div>
+              <div class="recap-row">
+                <span class="recap-label">Client</span>
+                <span class="recap-value">{{ order.customer_name }}</span>
+              </div>
+              <div v-if="order.customer_phone" class="recap-row">
+                <span class="recap-label">Téléphone</span>
+                <span class="recap-value">{{ order.customer_phone }}</span>
+              </div>
+              <div v-if="order.shipping_address || order.shipping_city" class="recap-row">
+                <span class="recap-label">Adresse</span>
+                <span class="recap-value">
+                  {{ order.shipping_address }}
+                  <br v-if="order.shipping_address && order.shipping_city" />
+                  {{ order.shipping_postcode }} {{ order.shipping_city }}
+                  <span v-if="order.shipping_country"> - {{ order.shipping_country }}</span>
+                </span>
+              </div>
+              <div v-if="order.shipping_method" class="recap-row">
+                <span class="recap-label">Livraison</span>
+                <span class="recap-value recap-shipping">{{ order.shipping_method }}</span>
+              </div>
+            </div>
+
+            <div class="recap-items">
+              <h4>Articles scannés ({{ pickedItems }} / {{ totalItems }})</h4>
+              <ul class="recap-items-list">
+                <li v-for="item in order.items.filter(i => i.is_picked)" :key="item.id" class="recap-item">
+                  <span class="recap-item-name">{{ item.name }}</span>
+                  <span class="recap-item-qty">x{{ item.picked_quantity }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
           <div class="completion-actions">
             <button @click="completeAndNext" :disabled="completing" class="btn-complete">
               {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
@@ -1416,6 +1461,114 @@ async function unpickItem(item) {
   color: var(--text-secondary);
   font-size: 0.938rem;
   line-height: 1.6;
+}
+
+.shipping-method {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.shipping-label {
+  font-size: 0.813rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.shipping-value {
+  margin: 0;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.order-recap {
+  text-align: left;
+  margin: 1.5rem 0;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+}
+
+.order-recap h4 {
+  margin: 0 0 1rem;
+  font-size: 0.938rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.recap-details {
+  margin-bottom: 1.25rem;
+}
+
+.recap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.recap-row:last-child {
+  border-bottom: none;
+}
+
+.recap-label {
+  font-size: 0.813rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-right: 1rem;
+}
+
+.recap-value {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+.recap-shipping {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.recap-items {
+  border-top: 2px solid var(--border);
+  padding-top: 1rem;
+}
+
+.recap-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recap-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.recap-item:last-child {
+  border-bottom: none;
+}
+
+.recap-item-name {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.recap-item-qty {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(12, 180, 212, 0.1);
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-sm);
 }
 
 .btn-complete {

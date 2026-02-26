@@ -15,6 +15,7 @@
         <div class="order-info">
           <span class="order-number">#{{ order.order_number }}</span>
           <span class="customer-name">{{ order.customer_name }}</span>
+          <span v-if="order.shipping_method" class="shipping-method-badge">🚚 {{ order.shipping_method }}</span>
         </div>
         <div class="progress-badge">
           {{ currentItemIndex + 1 }} / {{ unpickedItems.length }}
@@ -34,7 +35,46 @@
         <div class="completion-card">
           <div class="completion-icon">🎉</div>
           <h2>Tous les articles sont scannés !</h2>
-          <p>Vous pouvez finaliser cette commande.</p>
+
+          <div class="order-recap">
+            <div class="recap-details">
+              <div class="recap-row">
+                <span class="recap-label">Commande</span>
+                <span class="recap-value">#{{ order.order_number }}</span>
+              </div>
+              <div class="recap-row">
+                <span class="recap-label">Client</span>
+                <span class="recap-value">{{ order.customer_name }}</span>
+              </div>
+              <div v-if="order.customer_phone" class="recap-row">
+                <span class="recap-label">Tél.</span>
+                <span class="recap-value">{{ order.customer_phone }}</span>
+              </div>
+              <div v-if="order.shipping_address || order.shipping_city" class="recap-row">
+                <span class="recap-label">Adresse</span>
+                <span class="recap-value">
+                  {{ order.shipping_address }}
+                  <br v-if="order.shipping_address && order.shipping_city" />
+                  {{ order.shipping_postcode }} {{ order.shipping_city }}
+                </span>
+              </div>
+              <div v-if="order.shipping_method" class="recap-row">
+                <span class="recap-label">Livraison</span>
+                <span class="recap-value recap-shipping">{{ order.shipping_method }}</span>
+              </div>
+            </div>
+
+            <div class="recap-items">
+              <p class="recap-items-title">Articles scannés ({{ pickedItems }} / {{ totalItems }})</p>
+              <ul class="recap-items-list">
+                <li v-for="item in order.items.filter(i => i.is_picked)" :key="item.id" class="recap-item">
+                  <span class="recap-item-name">{{ item.name }}</span>
+                  <span class="recap-item-qty">x{{ item.picked_quantity }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
           <button @click="completeAndNext" :disabled="completing" class="btn-complete-large">
             {{ completing ? 'Finalisation...' : '✅ Finaliser et passer à la suivante' }}
           </button>
@@ -552,6 +592,15 @@ function goToFullView() {
   color: var(--text-secondary);
 }
 
+.shipping-method-badge {
+  font-size: 0.688rem;
+  color: var(--primary);
+  font-weight: 600;
+  background: rgba(12, 180, 212, 0.1);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
 .progress-badge {
   background: var(--primary);
   color: white;
@@ -793,6 +842,102 @@ function goToFullView() {
 .hold-card p {
   color: var(--text-secondary);
   margin: 0 0 2rem;
+}
+
+.order-recap {
+  text-align: left;
+  margin: 1.5rem 0;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  border: 1px solid var(--border);
+}
+
+.recap-details {
+  margin-bottom: 1rem;
+}
+
+.recap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.recap-row:last-child {
+  border-bottom: none;
+}
+
+.recap-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+}
+
+.recap-value {
+  font-size: 0.813rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+.recap-shipping {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.recap-items {
+  border-top: 2px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.recap-items-title {
+  font-size: 0.813rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.recap-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.recap-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.recap-item:last-child {
+  border-bottom: none;
+}
+
+.recap-item-name {
+  font-size: 0.813rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+}
+
+.recap-item-qty {
+  font-size: 0.813rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(12, 180, 212, 0.1);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
 .btn-complete-large {

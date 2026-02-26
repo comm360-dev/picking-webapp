@@ -15,6 +15,10 @@
       <span class="email">{{ order.customer_email }}</span>
     </div>
 
+    <div v-if="order.shipping_method" class="order-shipping">
+      <span class="shipping-badge">🚚 {{ order.shipping_method }}</span>
+    </div>
+
     <div class="order-footer">
       <div class="order-date">
         {{ formatDate(order.order_date) }}
@@ -228,6 +232,21 @@ function formatDate(dateString) {
 .order-customer .email {
   font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+.order-shipping {
+  margin-bottom: 1rem;
+}
+
+.shipping-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  background: rgba(12, 180, 212, 0.1);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 0.813rem;
+  font-weight: 600;
+  border: 1px solid rgba(12, 180, 212, 0.2);
 }
 
 .order-footer {
