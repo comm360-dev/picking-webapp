@@ -90,7 +90,7 @@
                 <span class="quantity">{{ item.picked_quantity || 0 }} / {{ item.quantity }}</span>
               </div>
 
-              <div class="item-actions">
+              <div v-if="!isCompleted" class="item-actions">
                 <button
                   v-if="!item.is_picked && !item.is_missing && currentItemId !== item.id"
                   @click="selectItem(item)"
@@ -135,7 +135,7 @@
               <strong>Note:</strong> {{ item.notes }}
             </div>
 
-            <div v-if="currentItemId === item.id" class="scan-section">
+            <div v-if="currentItemId === item.id && !isCompleted" class="scan-section">
               <p class="scan-instruction">Scannez le QR code ou entrez le SKU manuellement</p>
 
               <QRScanner @scan="handleScan" class="scanner-wrapper" />
@@ -172,7 +172,7 @@
       </div>
 
       <!-- Bouton mettre en attente dès qu'un article est manquant -->
-      <div v-if="hasMissingItems && !isOnHold" class="hold-section">
+      <div v-if="hasMissingItems && !isOnHold && !isCompleted" class="hold-section">
         <div class="hold-card">
           <h3>⚠️ Article(s) en rupture de stock</h3>
           <p>Vous pouvez mettre cette commande en attente et passer à la suivante.</p>
@@ -183,7 +183,7 @@
       </div>
 
       <!-- Section finalisation quand tous les articles sont scannés (sans manquants) -->
-      <div v-if="allItemsPicked && !hasMissingItems && !isOnHold" class="completion-section">
+      <div v-if="allItemsPicked && !hasMissingItems && !isOnHold && !isCompleted" class="completion-section">
         <div class="completion-card">
           <h3>🎉 Tous les articles ont été scannés !</h3>
 
@@ -341,6 +341,10 @@ const sortedItems = computed(() => {
 
 const isOnHold = computed(() => {
   return order.value?.status === 'on-hold'
+})
+
+const isCompleted = computed(() => {
+  return order.value?.status === 'completed'
 })
 
 onMounted(async () => {
