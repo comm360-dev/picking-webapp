@@ -340,6 +340,14 @@ async function loadOrder() {
     // Auto-reprendre en mode offline aussi
     if (order.value.status === 'on-hold') {
       order.value.status = 'processing'
+      // Réinitialiser les articles manquants
+      for (const item of order.value.items || []) {
+        if (item.is_missing) {
+          item.is_missing = false
+          item.notes = null
+          await orderItemsDB.update(item.id, { is_missing: false, notes: null })
+        }
+      }
     }
 
   } catch (err) {
@@ -351,9 +359,24 @@ async function loadOrder() {
 
 async function resumeOnHoldOrder() {
   try {
+    // Remettre en processing
     await api.put(`/orders/${order.value.id}/status`, { status: 'processing' })
     order.value.status = 'processing'
-    showFeedback('▶️ Commande reprise, scannez les articles restants', 'success')
+
+    // Réinitialiser tous les articles manquants pour qu'ils soient scannables
+    const orderId = order.value.id
+    for (const item of order.value.items) {
+      if (item.is_missing) {
+        item.is_missing = false
+        item.notes = null
+        await orderItemsDB.update(item.id, { is_missing: false, notes: null })
+        // Sync API en arrière-plan
+        api.put(`/orders/${orderId}/items/${item.id}/reset-missing`)
+          .catch(err => console.warn('Reset missing sync error:', err.message))
+      }
+    }
+
+    showFeedback('▶️ Commande reprise, scannez les articles', 'success')
   } catch (err) {
     console.warn('Erreur lors de la reprise:', err)
   }

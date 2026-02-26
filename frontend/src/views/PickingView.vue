@@ -576,6 +576,18 @@ async function resumeOrder() {
     // Mettre à jour le statut local
     order.value.status = 'processing'
 
+    // Réinitialiser tous les articles manquants pour qu'ils soient scannables
+    const orderId = order.value.id
+    for (const item of order.value.items) {
+      if (item.is_missing) {
+        item.is_missing = false
+        item.notes = null
+        await orderItemsDB.update(item.id, { is_missing: false, notes: null })
+        api.put(`/orders/${orderId}/items/${item.id}/reset-missing`)
+          .catch(err => console.warn('Reset missing sync error:', err.message))
+      }
+    }
+
     showFeedback('▶️ Commande reprise ! Vous pouvez scanner les articles.', 'success')
   } catch (err) {
     showFeedback('❌ Erreur lors de la reprise', 'error')
