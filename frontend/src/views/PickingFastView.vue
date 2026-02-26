@@ -81,15 +81,25 @@
         </div>
       </div>
 
-      <!-- Articles manquants - proposer mise en attente -->
+      <!-- Articles manquants - proposer mise en attente ou finalisation -->
       <div v-else-if="allItemsPicked && hasMissingItems" class="hold-screen">
         <div class="hold-card">
           <div class="hold-icon">⚠️</div>
           <h2>Commande incomplète</h2>
           <p>{{ missingItemsCount }} article(s) en rupture de stock.</p>
-          <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold-large">
-            {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente et passer à la suivante' }}
-          </button>
+          <div class="missing-items-recap" v-if="missingItemsList.length > 0">
+            <ul>
+              <li v-for="item in missingItemsList" :key="item.id">{{ item.name }} (x{{ item.quantity }})</li>
+            </ul>
+          </div>
+          <div class="hold-actions">
+            <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold-large">
+              {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente' }}
+            </button>
+            <button v-if="pickedItems > 0" @click="completeAndNext" :disabled="completing" class="btn-complete-partial">
+              {{ completing ? 'Finalisation...' : '✅ Finaliser avec les articles scannés' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -271,6 +281,11 @@ const missingItemsCount = computed(() => {
   return order.value.items.filter(item => item.is_missing).length
 })
 
+const missingItemsList = computed(() => {
+  if (!order.value?.items) return []
+  return order.value.items.filter(item => item.is_missing)
+})
+
 onMounted(async () => {
   await loadOrder()
 })
@@ -301,6 +316,12 @@ async function loadOrder() {
             await orderItemsDB.put({ ...item, order_id: orderId })
           }
         }
+
+        // Auto-reprendre les commandes en attente pour permettre le scan
+        if (order.value.status === 'on-hold') {
+          await resumeOnHoldOrder()
+        }
+
         return
       } catch (err) {
         console.warn('Erreur API, tentative de chargement depuis le cache:', err)
@@ -316,10 +337,25 @@ async function loadOrder() {
     const cachedItems = await orderItemsDB.where('order_id').equals(orderId).toArray()
     order.value = { ...cachedOrder, items: cachedItems }
 
+    // Auto-reprendre en mode offline aussi
+    if (order.value.status === 'on-hold') {
+      order.value.status = 'processing'
+    }
+
   } catch (err) {
     error.value = err.response?.data?.message || 'Erreur lors du chargement'
   } finally {
     loading.value = false
+  }
+}
+
+async function resumeOnHoldOrder() {
+  try {
+    await api.put(`/orders/${order.value.id}/status`, { status: 'processing' })
+    order.value.status = 'processing'
+    showFeedback('▶️ Commande reprise, scannez les articles restants', 'success')
+  } catch (err) {
+    console.warn('Erreur lors de la reprise:', err)
   }
 }
 
@@ -953,6 +989,39 @@ function goToFullView() {
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
+.missing-items-recap {
+  text-align: left;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-sm);
+}
+
+.missing-items-recap ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.missing-items-recap li {
+  padding: 0.375rem 0;
+  font-size: 0.875rem;
+  color: var(--error);
+  font-weight: 500;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+}
+
+.missing-items-recap li:last-child {
+  border-bottom: none;
+}
+
+.hold-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .btn-hold-large {
   width: 100%;
   padding: 1.25rem;
@@ -964,6 +1033,19 @@ function goToFullView() {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.btn-complete-partial {
+  width: 100%;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
 /* Feedback toast */

@@ -19,6 +19,16 @@
       <span class="shipping-badge">🚚 {{ order.shipping_method }}</span>
     </div>
 
+    <div v-if="missingItems.length > 0" class="missing-items-section">
+      <div class="missing-items-header">⚠️ Articles manquants ({{ missingItems.length }})</div>
+      <ul class="missing-items-list">
+        <li v-for="item in missingItems" :key="item.id" class="missing-item">
+          <span class="missing-item-name">{{ item.name }}</span>
+          <span class="missing-item-qty">x{{ item.quantity }}</span>
+        </li>
+      </ul>
+    </div>
+
     <div class="order-footer">
       <div class="order-date">
         {{ formatDate(order.order_date) }}
@@ -37,7 +47,7 @@
         @click="$emit('start', order)"
         class="btn-start"
       >
-        Commencer
+        {{ order.status === 'on-hold' ? 'Reprendre' : 'Commencer' }}
       </button>
     </div>
   </div>
@@ -54,6 +64,11 @@ const props = defineProps({
 })
 
 defineEmits(['view', 'start'])
+
+const missingItems = computed(() => {
+  if (!props.order.items || !Array.isArray(props.order.items)) return []
+  return props.order.items.filter(item => item.is_missing)
+})
 
 const statusLabel = computed(() => {
   const labels = {
@@ -247,6 +262,56 @@ function formatDate(dateString) {
   font-size: 0.813rem;
   font-weight: 600;
   border: 1px solid rgba(12, 180, 212, 0.2);
+}
+
+.missing-items-section {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-sm);
+}
+
+.missing-items-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--error);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.missing-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.missing-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 4px;
+}
+
+.missing-item-name {
+  font-size: 0.813rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.missing-item-qty {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
 }
 
 .order-footer {

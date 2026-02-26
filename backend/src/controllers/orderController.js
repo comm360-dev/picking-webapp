@@ -87,6 +87,16 @@ class OrderController {
 
       const orders = await Order.getAll(filters);
 
+      // Attacher les items pour les commandes on-hold (pour afficher les manquants)
+      for (const order of orders) {
+        if (order.status === 'on-hold') {
+          const fullOrder = await Order.getWithItems(order.id);
+          if (fullOrder) {
+            order.items = fullOrder.items;
+          }
+        }
+      }
+
       res.json({
         orders,
         count: orders.length
