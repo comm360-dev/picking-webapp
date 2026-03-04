@@ -57,6 +57,27 @@ async function runMigrations() {
       END $$;
     `);
 
+    // Ajouter le rôle commercial à la contrainte users_role_check
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.check_constraints
+          WHERE constraint_name = 'users_role_check'
+        ) THEN
+          ALTER TABLE users DROP CONSTRAINT users_role_check;
+        END IF;
+
+        ALTER TABLE users ADD CONSTRAINT users_role_check
+        CHECK (role IN ('preparateur', 'admin', 'commercial'));
+
+        RAISE NOTICE 'Migration rôle commercial appliquée';
+      EXCEPTION
+        WHEN duplicate_object THEN
+          RAISE NOTICE 'Contrainte rôle déjà à jour';
+      END $$;
+    `);
+
     console.log('✅ Migrations terminées');
   } catch (error) {
     console.error('⚠️ Erreur migration (non bloquante):', error.message);

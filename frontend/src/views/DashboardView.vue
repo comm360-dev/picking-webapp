@@ -309,6 +309,10 @@ function handleLogout() {
   background: linear-gradient(135deg, var(--warning) 0%, #F97316 100%);
 }
 
+.role-badge.commercial {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+}
+
 .role-badge.preparateur {
   background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
 }

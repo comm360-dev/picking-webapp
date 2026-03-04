@@ -27,4 +27,12 @@ const isAdmin = (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware, isAdmin };
+const isCommercial = (req, res, next) => {
+  if (req.user && (req.user.role === 'commercial' || req.user.role === 'admin')) {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Accès interdit: droits commercial requis' });
+  }
+};
+
+module.exports = { authMiddleware, isAdmin, isCommercial };

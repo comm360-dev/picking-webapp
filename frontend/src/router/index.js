@@ -6,6 +6,7 @@ import PickingView from '../views/PickingView.vue'
 import PickingFastView from '../views/PickingFastView.vue'
 import AdminQRView from '../views/AdminQRView.vue'
 import HistoryView from '../views/HistoryView.vue'
+import QuotesView from '../views/QuotesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -51,6 +52,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/quotes',
+      name: 'quotes',
+      component: QuotesView,
+      meta: { requiresAuth: true, requiresCommercial: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/dashboard'
     }
@@ -63,9 +70,19 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/dashboard')
+    // Rediriger selon le rôle
+    if (authStore.isCommercial) {
+      next('/quotes')
+    } else {
+      next('/dashboard')
+    }
   } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next('/dashboard')
+  } else if (to.meta.requiresCommercial && !authStore.isCommercial && !authStore.isAdmin) {
+    next('/dashboard')
+  } else if (authStore.isCommercial && !to.meta.requiresCommercial && to.name !== 'login') {
+    // Le commercial ne peut accéder qu'aux pages devis
+    next('/quotes')
   } else {
     next()
   }

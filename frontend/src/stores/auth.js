@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const isCommercial = computed(() => user.value?.role === 'commercial')
 
   function setAuthHeader() {
     if (token.value) {
@@ -113,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     isAdmin,
+    isCommercial,
     login,
     register,
     logout,

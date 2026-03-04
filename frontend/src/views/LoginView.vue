@@ -55,7 +55,11 @@ async function handleLogin() {
   const result = await authStore.login(email.value, password.value)
 
   if (result.success) {
-    router.push('/dashboard')
+    if (authStore.isCommercial) {
+      router.push('/quotes')
+    } else {
+      router.push('/dashboard')
+    }
   }
 }
 </script>
