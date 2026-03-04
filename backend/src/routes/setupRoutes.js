@@ -296,6 +296,46 @@ router.get('/create-preparateur', async (req, res) => {
   }
 });
 
+// Route pour créer le compte commercial
+router.get('/create-commercial', async (req, res) => {
+  try {
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', ['commercial@picking.local']);
+
+    if (existing.rows.length > 0) {
+      return res.json({
+        success: true,
+        message: 'Le compte commercial existe déjà',
+        email: 'commercial@picking.local'
+      });
+    }
+
+    const commercialPwd = process.env.COMMERCIAL_PASSWORD;
+    if (!commercialPwd) {
+      return res.status(400).json({ success: false, error: 'Variable COMMERCIAL_PASSWORD non configurée sur le serveur' });
+    }
+
+    const passwordHash = await bcrypt.hash(commercialPwd, 10);
+    await pool.query(
+      'INSERT INTO users (email, password, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5)',
+      ['commercial@picking.local', passwordHash, 'commercial', 'Commercial', 'R2C']
+    );
+
+    res.json({
+      success: true,
+      message: 'Compte commercial créé avec succès',
+      credentials: {
+        email: 'commercial@picking.local',
+        role: 'commercial'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Route pour ajouter les colonnes picking sur orders
 router.get('/fix-orders-table', async (req, res) => {
   try {
