@@ -105,8 +105,8 @@ class Product {
         }
 
         const result = await client.query(
-          `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url, weight)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (wc_id)
            DO UPDATE SET
              sku = EXCLUDED.sku,
@@ -114,6 +114,7 @@ class Product {
              price = EXCLUDED.price,
              stock_quantity = EXCLUDED.stock_quantity,
              image_url = EXCLUDED.image_url,
+             weight = EXCLUDED.weight,
              updated_at = CURRENT_TIMESTAMP
            RETURNING *`,
           [
@@ -124,7 +125,8 @@ class Product {
             product.stock_quantity || 0,
             product.location || null,
             product.qr_code || null,
-            product.image_url || null
+            product.image_url || null,
+            product.weight || 0
           ]
         );
         insertedProducts.push(result.rows[0]);

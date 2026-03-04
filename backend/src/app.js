@@ -124,6 +124,22 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_quote_items_quote_id ON quote_items(quote_id);
     `);
 
+    // Ajouter la colonne weight à la table products si elle n'existe pas
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'products' AND column_name = 'weight'
+        ) THEN
+          ALTER TABLE products ADD COLUMN weight DECIMAL(10, 3) DEFAULT 0;
+          RAISE NOTICE 'Colonne weight ajoutée à products';
+        ELSE
+          RAISE NOTICE 'Colonne weight déjà existante';
+        END IF;
+      END $$;
+    `);
+
     console.log('✅ Migrations terminées');
   } catch (error) {
     console.error('⚠️ Erreur migration (non bloquante):', error.message);
