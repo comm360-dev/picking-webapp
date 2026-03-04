@@ -113,6 +113,46 @@ CREATE TABLE IF NOT EXISTS inventory_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Table: quotes (devis clients)
+CREATE TABLE IF NOT EXISTS quotes (
+  id SERIAL PRIMARY KEY,
+  quote_number VARCHAR(100) UNIQUE,
+  customer_name VARCHAR(255) NOT NULL,
+  customer_email VARCHAR(255),
+  customer_phone VARCHAR(50),
+  shipping_address TEXT,
+  shipping_city VARCHAR(255),
+  shipping_postcode VARCHAR(20),
+  shipping_country VARCHAR(100) DEFAULT 'FR',
+  shipping_method VARCHAR(255),
+  shipping_cost DECIMAL(10, 2) DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected', 'converted')),
+  subtotal DECIMAL(10, 2) DEFAULT 0,
+  total DECIMAL(10, 2) DEFAULT 0,
+  discount_type VARCHAR(20) CHECK (discount_type IN ('percent', 'fixed')),
+  discount_value DECIMAL(10, 2) DEFAULT 0,
+  notes TEXT,
+  valid_until DATE,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  wc_order_id INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: quote_items (lignes de devis)
+CREATE TABLE IF NOT EXISTS quote_items (
+  id SERIAL PRIMARY KEY,
+  quote_id INTEGER REFERENCES quotes(id) ON DELETE CASCADE,
+  product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  custom_name VARCHAR(255),
+  custom_sku VARCHAR(255),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price DECIMAL(10, 2) NOT NULL,
+  weight DECIMAL(10, 3) DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes pour optimisation
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_products_sku ON products(sku);
@@ -124,6 +164,9 @@ CREATE INDEX idx_qr_mappings_qr_code ON qr_mappings(qr_code);
 CREATE INDEX idx_qr_mappings_sku ON qr_mappings(sku);
 CREATE INDEX idx_order_history_order_id ON order_history(order_id);
 CREATE INDEX idx_order_history_user_id ON order_history(user_id);
+CREATE INDEX idx_quotes_status ON quotes(status);
+CREATE INDEX idx_quotes_created_by ON quotes(created_by);
+CREATE INDEX idx_quote_items_quote_id ON quote_items(quote_id);
 
 -- Fonction pour mettre à jour updated_at automatiquement
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -145,6 +188,9 @@ CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_qr_mappings_updated_at BEFORE UPDATE ON qr_mappings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_quotes_updated_at BEFORE UPDATE ON quotes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insertion d'un utilisateur admin par défaut

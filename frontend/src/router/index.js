@@ -7,6 +7,7 @@ import PickingFastView from '../views/PickingFastView.vue'
 import AdminQRView from '../views/AdminQRView.vue'
 import HistoryView from '../views/HistoryView.vue'
 import QuotesView from '../views/QuotesView.vue'
+import QuoteEditorView from '../views/QuoteEditorView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -55,6 +56,12 @@ const router = createRouter({
       path: '/quotes',
       name: 'quotes',
       component: QuotesView,
+      meta: { requiresAuth: true, requiresCommercial: true }
+    },
+    {
+      path: '/quotes/:id',
+      name: 'quote-editor',
+      component: QuoteEditorView,
       meta: { requiresAuth: true, requiresCommercial: true }
     },
     {

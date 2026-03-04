@@ -9,6 +9,7 @@ const productRoutes = require('./routes/productRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const imageProxyRoutes = require('./routes/imageProxyRoutes');
 const setupRoutes = require('./routes/setupRoutes');
+const quoteRoutes = require('./routes/quoteRoutes');
 const pool = require('./config/database');
 
 const app = express();
@@ -78,6 +79,51 @@ async function runMigrations() {
       END $$;
     `);
 
+    // Créer les tables quotes et quote_items si elles n'existent pas
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotes (
+        id SERIAL PRIMARY KEY,
+        quote_number VARCHAR(100) UNIQUE,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_email VARCHAR(255),
+        customer_phone VARCHAR(50),
+        shipping_address TEXT,
+        shipping_city VARCHAR(255),
+        shipping_postcode VARCHAR(20),
+        shipping_country VARCHAR(100) DEFAULT 'FR',
+        shipping_method VARCHAR(255),
+        shipping_cost DECIMAL(10, 2) DEFAULT 0,
+        status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected', 'converted')),
+        subtotal DECIMAL(10, 2) DEFAULT 0,
+        total DECIMAL(10, 2) DEFAULT 0,
+        discount_type VARCHAR(20) CHECK (discount_type IN ('percent', 'fixed')),
+        discount_value DECIMAL(10, 2) DEFAULT 0,
+        notes TEXT,
+        valid_until DATE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        wc_order_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS quote_items (
+        id SERIAL PRIMARY KEY,
+        quote_id INTEGER REFERENCES quotes(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+        custom_name VARCHAR(255),
+        custom_sku VARCHAR(255),
+        quantity INTEGER NOT NULL DEFAULT 1,
+        unit_price DECIMAL(10, 2) NOT NULL,
+        weight DECIMAL(10, 3) DEFAULT 0,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
+      CREATE INDEX IF NOT EXISTS idx_quotes_created_by ON quotes(created_by);
+      CREATE INDEX IF NOT EXISTS idx_quote_items_quote_id ON quote_items(quote_id);
+    `);
+
     console.log('✅ Migrations terminées');
   } catch (error) {
     console.error('⚠️ Erreur migration (non bloquante):', error.message);
@@ -112,6 +158,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/image-proxy', imageProxyRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/quotes', quoteRoutes);
 
 // Servir les fichiers statiques du frontend en production
 if (process.env.NODE_ENV === 'production') {

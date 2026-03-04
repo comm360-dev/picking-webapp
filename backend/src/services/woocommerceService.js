@@ -276,6 +276,59 @@ class WooCommerceService {
     }
   }
 
+  async createOrder(orderData) {
+    if (this.useMockData) {
+      console.log('📋 Mock: Création de commande');
+      return { id: 999, number: '9999', status: orderData.status || 'processing' };
+    }
+
+    try {
+      const response = await this.api.post('orders', orderData);
+      console.log(`✅ Commande WooCommerce #${response.data.number} créée`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur WooCommerce createOrder:', error);
+      throw error;
+    }
+  }
+
+  async getShippingMethods() {
+    if (this.useMockData) {
+      return [
+        { id: 1, method_id: 'flat_rate', title: 'Livraison standard', cost: '8.90' },
+        { id: 2, method_id: 'express', title: 'Livraison express', cost: '15.90' }
+      ];
+    }
+
+    try {
+      // Récupérer les zones de livraison
+      const zonesResponse = await this.api.get('shipping/zones');
+      const zones = zonesResponse.data;
+
+      const allMethods = [];
+      for (const zone of zones) {
+        const methodsResponse = await this.api.get(`shipping/zones/${zone.id}/methods`);
+        for (const method of methodsResponse.data) {
+          if (method.enabled) {
+            allMethods.push({
+              id: method.id,
+              zone_id: zone.id,
+              zone_name: zone.name,
+              method_id: method.method_id,
+              title: method.title,
+              cost: method.settings?.cost?.value || '0'
+            });
+          }
+        }
+      }
+
+      return allMethods;
+    } catch (error) {
+      console.error('Erreur WooCommerce getShippingMethods:', error);
+      throw error;
+    }
+  }
+
   isMockMode() {
     return this.useMockData;
   }
