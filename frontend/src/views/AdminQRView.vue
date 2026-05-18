@@ -379,14 +379,14 @@ async function printSingleQR(product) {
     // Générer le QR code en haute résolution
     const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
       width: 400,
-      margin: 2,
+      margin: 0,
       color: {
         dark: '#000000',
         light: '#ffffff'
       }
     })
 
-    // Créer une fenêtre d'impression pour un seul QR
+    // Créer une fenêtre d'impression pour un seul QR (format 60x35mm)
     const printWindow = window.open('', '_blank')
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -394,63 +394,53 @@ async function printSingleQR(product) {
       <head>
         <title>Impression QR Code - ${product.sku}</title>
         <style>
+          @page {
+            size: 60mm 35mm;
+            margin: 0;
+          }
           @media print {
-            @page { margin: 1cm; }
             .no-print { display: none; }
+            body { margin: 0; padding: 0; }
           }
           body {
             font-family: Arial, sans-serif;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            margin: 0;
+            padding: 0;
           }
-          .qr-item {
-            border: 2px solid #333;
-            padding: 15px 20px;
+          .qr-label {
+            width: 60mm;
+            height: 35mm;
+            box-sizing: border-box;
+            padding: 2mm;
             display: flex;
             align-items: center;
-            gap: 20px;
-            border-radius: 12px;
-            max-width: 500px;
+            gap: 2mm;
+            overflow: hidden;
           }
           .qr-image {
             flex-shrink: 0;
+            width: 31mm;
+            height: 31mm;
           }
           .qr-image img {
-            width: 120px;
-            height: 120px;
+            width: 100%;
+            height: 100%;
             display: block;
           }
           .qr-info {
             flex: 1;
+            min-width: 0;
             text-align: left;
+            overflow: hidden;
           }
           .qr-sku {
             font-weight: bold;
-            font-size: 24px;
-            margin-bottom: 6px;
-          }
-          .qr-name {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 8px;
-            line-height: 1.3;
-          }
-          .qr-code-text {
-            font-family: monospace;
-            font-size: 12px;
-            color: #999;
-          }
-          .qr-location {
-            font-size: 14px;
-            color: #10B981;
-            margin-top: 6px;
-            font-weight: 600;
+            font-size: 11pt;
+            line-height: 1.1;
+            word-break: break-all;
           }
           .print-btn {
-            margin-top: 20px;
+            margin: 10px;
             padding: 10px 20px;
             background: #6366F1;
             color: white;
@@ -462,20 +452,15 @@ async function printSingleQR(product) {
         </style>
       </head>
       <body>
-        <div>
-          <div class="qr-item">
-            <div class="qr-image">
-              <img src="${qrDataUrl}" alt="QR Code ${product.sku}">
-            </div>
-            <div class="qr-info">
-              <div class="qr-sku">${product.sku}</div>
-              <div class="qr-name">${product.name}</div>
-              <div class="qr-code-text">${product.qr_code}</div>
-              ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
-            </div>
+        <div class="qr-label">
+          <div class="qr-image">
+            <img src="${qrDataUrl}" alt="QR Code ${product.sku}">
           </div>
-          <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer</button>
+          <div class="qr-info">
+            <div class="qr-sku">${product.sku}</div>
+          </div>
         </div>
+        <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer</button>
       </body>
       </html>
     `)
@@ -547,6 +532,7 @@ function handleFileUpload(event) {
 async function printAllQR() {
   try {
     // Créer une fenêtre d'impression avec tous les QR codes
+    // Étiquettes 60x35mm disposées en grille sur A4 (3 colonnes x 7 rangées = 21 étiquettes/page)
     const printWindow = window.open('', '_blank')
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -554,75 +540,59 @@ async function printAllQR() {
       <head>
         <title>Impression QR Codes</title>
         <style>
-          @media print {
-            @page { margin: 0.5cm; }
+          @page {
+            size: A4 portrait;
+            margin: 10mm 15mm;
           }
           body {
             font-family: Arial, sans-serif;
-            padding: 10px;
-          }
-          h1 {
-            font-size: 18px;
-            margin-bottom: 15px;
+            margin: 0;
+            padding: 0;
           }
           .qr-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            grid-template-columns: repeat(3, 60mm);
+            gap: 0;
+            justify-content: center;
           }
-          .qr-item {
-            border: 1px solid #333;
-            padding: 10px 12px;
+          .qr-label {
+            width: 60mm;
+            height: 35mm;
+            box-sizing: border-box;
+            padding: 2mm;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 2mm;
+            overflow: hidden;
+            border: 1px dashed #cccccc;
             page-break-inside: avoid;
-            border-radius: 8px;
+            break-inside: avoid;
           }
           .qr-image {
             flex-shrink: 0;
+            width: 31mm;
+            height: 31mm;
           }
           .qr-image img {
-            width: 80px;
-            height: 80px;
+            width: 100%;
+            height: 100%;
             display: block;
           }
           .qr-info {
             flex: 1;
+            min-width: 0;
             text-align: left;
             overflow: hidden;
           }
           .qr-sku {
             font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 3px;
-          }
-          .qr-name {
-            font-size: 11px;
-            color: #333;
-            margin-bottom: 4px;
-            line-height: 1.2;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-          }
-          .qr-code-text {
-            font-family: monospace;
-            font-size: 9px;
-            color: #999;
-          }
-          .qr-location {
-            font-size: 10px;
-            color: #10B981;
-            margin-top: 3px;
-            font-weight: 600;
+            font-size: 11pt;
+            line-height: 1.1;
+            word-break: break-all;
           }
         </style>
       </head>
       <body>
-        <h1>QR Codes - Picking WebApp</h1>
         <div class="qr-grid">
     `)
 
@@ -634,20 +604,17 @@ async function printAllQR() {
     // Générer et ajouter chaque QR code
     for (const product of sortedProducts) {
       const qrDataUrl = await QRCode.toDataURL(product.qr_code, {
-        width: 200,
-        margin: 1
+        width: 400,
+        margin: 0
       })
 
       printWindow.document.write(`
-        <div class="qr-item">
+        <div class="qr-label">
           <div class="qr-image">
             <img src="${qrDataUrl}" alt="QR Code ${product.sku}" />
           </div>
           <div class="qr-info">
             <div class="qr-sku">${product.sku}</div>
-            <div class="qr-name">${product.name}</div>
-            <div class="qr-code-text">${product.qr_code}</div>
-            ${product.location ? `<div class="qr-location">📍 ${product.location}</div>` : ''}
           </div>
         </div>
       `)
