@@ -65,9 +65,13 @@
             </div>
 
             <div class="recap-items">
-              <p class="recap-items-title">Articles scannés ({{ pickedItems }} / {{ totalItems }})</p>
+              <p class="recap-items-title">🔍 Vérification ({{ pickedItems }} / {{ totalItems }})</p>
               <ul class="recap-items-list">
                 <li v-for="item in order.items.filter(i => i.is_picked)" :key="item.id" class="recap-item">
+                  <div class="recap-item-thumb" v-if="item.image_url">
+                    <img :src="getImageUrl(item.image_url)" :alt="item.name" />
+                  </div>
+                  <div class="recap-item-thumb recap-item-thumb-placeholder" v-else>📦</div>
                   <span class="recap-item-name">{{ item.name }}</span>
                   <span class="recap-item-qty">x{{ item.picked_quantity }}</span>
                 </li>
@@ -96,7 +100,7 @@
             <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold-large">
               {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente' }}
             </button>
-            <button v-if="pickedItems > 0" @click="completeAndNext" :disabled="completing" class="btn-complete-partial">
+            <button v-if="pickedItems > 0" @click="requestCompleteWithMissing" :disabled="completing" class="btn-complete-partial">
               {{ completing ? 'Finalisation...' : '✅ Finaliser avec les articles scannés' }}
             </button>
           </div>
@@ -183,6 +187,28 @@
         </div>
       </transition>
 
+      <!-- Modal de confirmation finalisation avec articles manquants -->
+      <div v-if="showCompleteConfirm" class="modal-overlay" @click.self="cancelCompleteWithMissing">
+        <div class="modal-content">
+          <h3>⚠️ Finaliser une commande incomplète ?</h3>
+          <p>
+            Cette commande contient <strong>{{ missingItemsCount }} article(s) manquant(s)</strong>.
+            Une fois finalisée, la commande sera marquée terminée.
+          </p>
+          <div class="missing-items-recap" v-if="missingItemsList.length > 0">
+            <ul>
+              <li v-for="item in missingItemsList" :key="item.id">{{ item.name }} (x{{ item.quantity }})</li>
+            </ul>
+          </div>
+          <div class="modal-actions">
+            <button @click="cancelCompleteWithMissing" class="btn-cancel">Annuler</button>
+            <button @click="confirmCompleteWithMissing" :disabled="completing" class="btn-confirm-danger">
+              {{ completing ? 'Finalisation...' : 'Confirmer la finalisation' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal produit manquant -->
       <div v-if="showMissingModal" class="modal-overlay" @click.self="closeMissingModal">
         <div class="modal-content">
@@ -231,6 +257,7 @@ const feedback = ref(null)
 const completing = ref(false)
 const holdingOrder = ref(false)
 const showMissingModal = ref(false)
+const showCompleteConfirm = ref(false)
 const outOfStock = ref(false)
 const missingNotes = ref('')
 const currentItemIndex = ref(0)
@@ -449,7 +476,7 @@ async function markItemAsPicked(item) {
     }
 
     // Masquer l'overlay et réactiver le scanner après un délai
-    const pauseDuration = isPicked ? 2500 : 1500 // Plus long si on passe à un autre article
+    const pauseDuration = isPicked ? 1200 : 750 // Plus long si on passe à un autre article
     setTimeout(() => {
       successOverlay.value = null
       scannerPaused.value = false
@@ -514,6 +541,19 @@ async function confirmMissing() {
     console.error('Erreur confirmMissing:', err)
     showFeedback('❌ Erreur', 'error')
   }
+}
+
+function requestCompleteWithMissing() {
+  showCompleteConfirm.value = true
+}
+
+function cancelCompleteWithMissing() {
+  showCompleteConfirm.value = false
+}
+
+async function confirmCompleteWithMissing() {
+  showCompleteConfirm.value = false
+  await completeAndNext()
 }
 
 async function completeAndNext() {
@@ -964,7 +1004,7 @@ function goToFullView() {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 200px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -980,6 +1020,29 @@ function goToFullView() {
   border-bottom: none;
 }
 
+.recap-item-thumb {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-card);
+  margin-right: 0.625rem;
+}
+
+.recap-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.recap-item-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
 .recap-item-name {
   font-size: 0.813rem;
   color: var(--text-primary);
@@ -987,6 +1050,7 @@ function goToFullView() {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: 0.5rem;
+  flex: 1;
 }
 
 .recap-item-qty {
@@ -1198,6 +1262,22 @@ function goToFullView() {
   color: white;
   font-weight: 600;
   cursor: pointer;
+}
+
+.btn-confirm-danger {
+  flex: 1;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-confirm-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Scanner en pause */
