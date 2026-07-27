@@ -93,6 +93,7 @@ class Product {
     try {
       await client.query('BEGIN');
       const insertedProducts = [];
+      const skippedProducts = [];
 
       for (const product of products) {
         // Utiliser wc_id au lieu de id
@@ -104,35 +105,55 @@ class Product {
           console.warn(`⚠️  Produit WC ID ${wcId} sans SKU, génération automatique: ${sku}`);
         }
 
-        const result = await client.query(
-          `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url, weight)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (wc_id)
-           DO UPDATE SET
-             sku = EXCLUDED.sku,
-             name = EXCLUDED.name,
-             price = EXCLUDED.price,
-             stock_quantity = EXCLUDED.stock_quantity,
-             image_url = EXCLUDED.image_url,
-             weight = EXCLUDED.weight,
-             updated_at = CURRENT_TIMESTAMP
-           RETURNING *`,
-          [
-            wcId,
-            sku,
-            product.name,
-            product.price || 0,
-            product.stock_quantity || 0,
-            product.location || null,
-            product.qr_code || null,
-            product.image_url || null,
-            product.weight || 0
-          ]
-        );
-        insertedProducts.push(result.rows[0]);
+        // On isole chaque produit dans un point de sauvegarde : ainsi, si deux
+        // produits WooCommerce partagent le même SKU (contrainte d'unicité sur
+        // sku), seul le doublon est ignoré au lieu d'annuler toute la synchro.
+        await client.query('SAVEPOINT product_sp');
+        try {
+          const result = await client.query(
+            `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url, weight)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             ON CONFLICT (wc_id)
+             DO UPDATE SET
+               sku = EXCLUDED.sku,
+               name = EXCLUDED.name,
+               price = EXCLUDED.price,
+               stock_quantity = EXCLUDED.stock_quantity,
+               image_url = EXCLUDED.image_url,
+               weight = EXCLUDED.weight,
+               updated_at = CURRENT_TIMESTAMP
+             RETURNING *`,
+            [
+              wcId,
+              sku,
+              product.name,
+              product.price || 0,
+              product.stock_quantity || 0,
+              product.location || null,
+              product.qr_code || null,
+              product.image_url || null,
+              product.weight || 0
+            ]
+          );
+          insertedProducts.push(result.rows[0]);
+          await client.query('RELEASE SAVEPOINT product_sp');
+        } catch (err) {
+          await client.query('ROLLBACK TO SAVEPOINT product_sp');
+          await client.query('RELEASE SAVEPOINT product_sp');
+          if (err.code === '23505') {
+            // SKU (ou autre clé) en doublon : on ignore ce produit sans casser la synchro
+            skippedProducts.push({ sku, wcId, name: product.name });
+            console.warn(`⚠️  Produit ignoré (doublon "${err.constraint}", SKU "${sku}", WC ID ${wcId} - ${product.name}). À corriger dans WooCommerce.`);
+          } else {
+            throw err;
+          }
+        }
       }
 
       await client.query('COMMIT');
+      if (skippedProducts.length > 0) {
+        console.warn(`⚠️  ${skippedProducts.length} produit(s) ignoré(s) pour doublon: ${skippedProducts.map(p => `${p.sku} (${p.name})`).join(', ')}`);
+      }
       return insertedProducts;
     } catch (error) {
       await client.query('ROLLBACK');
