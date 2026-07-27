@@ -1,5 +1,13 @@
 const pool = require('../config/database');
 
+// Détecte le "contenant" d'un lot intelligent (bundle WooSB) : cette ligne de
+// commande n'a pas d'existence physique, seuls ses composants (marqués
+// _woosb_parent_id) doivent être préparés. On la reconnaît à la clé _woosb_ids.
+function isBundleContainer(item) {
+  return Array.isArray(item.meta_data)
+    && item.meta_data.some(m => m.key === '_woosb_ids');
+}
+
 class OrderItem {
   static async create({ orderId, productId, quantity }) {
     const result = await pool.query(
@@ -124,9 +132,19 @@ class OrderItem {
 
       const insertedItems = [];
 
-      console.log(`📦 Création de ${items.length} items pour commande ${orderId}`);
+      // Écarter les contenants de lots intelligents (bundles) : on ne prépare
+      // que les vrais articles physiques, pas le "kit" qui les regroupe.
+      const scannableItems = items.filter(item => {
+        if (isBundleContainer(item)) {
+          console.log(`  ⏭️  Lot intelligent ignoré (non physique): ${item.name}`);
+          return false;
+        }
+        return true;
+      });
 
-      for (const item of items) {
+      console.log(`📦 Création de ${scannableItems.length} items pour commande ${orderId} (${items.length - scannableItems.length} lot(s) intelligent(s) ignoré(s))`);
+
+      for (const item of scannableItems) {
         // Trouver le produit correspondant par wc_id
         const product = products.find(p => p.wc_id === item.product_id);
 
