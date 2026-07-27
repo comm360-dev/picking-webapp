@@ -149,7 +149,7 @@ export default { name: 'DashboardView' }
 </script>
 
 <script setup>
-import { ref, computed, onActivated } from 'vue'
+import { ref, computed, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
@@ -218,10 +218,22 @@ const filteredCompletedOrders = computed(() => {
   })
 })
 
+// Position de défilement mémorisée pour la restaurer au retour sur le Dashboard.
+const savedScroll = ref(0)
+
+// Mémorise la position de défilement quand on quitte le Dashboard (vers Détails, etc.)
+onDeactivated(() => {
+  savedScroll.value = window.scrollY
+})
+
 // onActivated se déclenche au premier affichage ET à chaque retour sur le Dashboard
 // (composant gardé en vie par keep-alive), ce qui garde la liste à jour sans le remonter.
+// On restaure la position de défilement après le rechargement des données et le rendu,
+// car le keep-alive + la transition de page empêchent le scrollBehavior du routeur d'y arriver.
 onActivated(async () => {
   await ordersStore.fetchOrders()
+  await nextTick()
+  window.scrollTo(0, savedScroll.value)
 })
 
 function onSortChange() {
