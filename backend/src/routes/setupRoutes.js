@@ -344,10 +344,11 @@ router.get('/fix-orders-table', async (req, res) => {
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS prepared_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS held_for_stock BOOLEAN DEFAULT false`);
 
     res.json({
       success: true,
-      message: 'Colonnes picking ajoutées à orders (picking_duration, started_at, completed_at, prepared_by)'
+      message: 'Colonnes picking ajoutées à orders (picking_duration, started_at, completed_at, prepared_by, held_for_stock)'
     });
   } catch (error) {
     res.status(500).json({

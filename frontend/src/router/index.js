@@ -11,6 +11,12 @@ import QuoteEditorView from '../views/QuoteEditorView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // Restaure la position de défilement précédente lors d'un retour arrière
+  // (combiné au keep-alive du Dashboard pour retrouver exactement l'endroit quitté)
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return { top: 0 }
+  },
   routes: [
     {
       path: '/',

@@ -248,11 +248,16 @@ class OrderController {
 
       // Mettre la commande en attente (on-hold) localement
       // On garde le statut 'processing' sur WooCommerce mais on marque 'on-hold' localement
-      const order = await Order.updateStatus(id, 'on-hold');
+      const updated = await Order.updateStatus(id, 'on-hold');
 
-      if (!order) {
+      if (!updated) {
         return res.status(404).json({ message: 'Commande non trouvée' });
       }
+
+      // Marquer durablement que la commande a été mise en attente pour rupture de stock.
+      // Ce drapeau empêche la finalisation forcée tant que l'article manquant n'a pas été
+      // réappprovisionné et scanné (le statut on-hold est perdu à la reprise, pas ce drapeau).
+      const order = await Order.markHeldForStock(id);
 
       // Enregistrer dans l'historique
       await History.create({

@@ -96,11 +96,15 @@
               <li v-for="item in missingItemsList" :key="item.id">{{ item.name }} (x{{ item.quantity }})</li>
             </ul>
           </div>
+          <p v-if="order.held_for_stock" class="hold-locked-note">
+            🔒 Cette commande a été mise en attente pour rupture. Elle ne pourra être
+            finalisée qu'une fois le ou les articles manquants réapprovisionnés et scannés.
+          </p>
           <div class="hold-actions">
             <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold-large">
               {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente' }}
             </button>
-            <button v-if="pickedItems > 0" @click="requestCompleteWithMissing" :disabled="completing" class="btn-complete-partial">
+            <button v-if="pickedItems > 0 && !order.held_for_stock" @click="requestCompleteWithMissing" :disabled="completing" class="btn-complete-partial">
               {{ completing ? 'Finalisation...' : '✅ Finaliser avec les articles scannés' }}
             </button>
           </div>
@@ -1101,6 +1105,19 @@ function goToFullView() {
 
 .missing-items-recap li:last-child {
   border-bottom: none;
+}
+
+.hold-locked-note {
+  text-align: left;
+  margin: 0 0 1.5rem;
+  padding: 0.875rem 1rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .hold-actions {

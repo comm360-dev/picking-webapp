@@ -1,8 +1,12 @@
 <template>
   <NetworkIndicator />
-  <transition name="page" mode="out-in">
-    <router-view />
-  </transition>
+  <router-view v-slot="{ Component }">
+    <transition name="page" mode="out-in">
+      <keep-alive include="DashboardView">
+        <component :is="Component" />
+      </keep-alive>
+    </transition>
+  </router-view>
 </template>
 
 <script setup>

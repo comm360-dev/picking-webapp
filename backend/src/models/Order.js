@@ -54,6 +54,14 @@ class Order {
     return result.rows[0];
   }
 
+  static async markHeldForStock(orderId) {
+    const result = await pool.query(
+      'UPDATE orders SET held_for_stock = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
+      [orderId]
+    );
+    return result.rows[0];
+  }
+
   static async markAsPicked(orderId, userId) {
     const result = await pool.query(
       `UPDATE orders

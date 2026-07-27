@@ -143,8 +143,13 @@
   </div>
 </template>
 
+<script>
+// Nom explicite requis pour que <keep-alive include="DashboardView"> cible ce composant
+export default { name: 'DashboardView' }
+</script>
+
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
@@ -213,7 +218,9 @@ const filteredCompletedOrders = computed(() => {
   })
 })
 
-onMounted(async () => {
+// onActivated se déclenche au premier affichage ET à chaque retour sur le Dashboard
+// (composant gardé en vie par keep-alive), ce qui garde la liste à jour sans le remonter.
+onActivated(async () => {
   await ordersStore.fetchOrders()
 })
 

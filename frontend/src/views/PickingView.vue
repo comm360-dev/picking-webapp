@@ -604,7 +604,13 @@ function showFeedback(message, type) {
 }
 
 function goBack() {
-  router.push('/dashboard')
+  // Retour arrière pour restaurer la position de défilement du Dashboard (via scrollBehavior).
+  // Repli sur une navigation directe si on est arrivé ici sans historique (lien direct).
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push('/dashboard')
+  }
 }
 
 function openMissingModal(item) {

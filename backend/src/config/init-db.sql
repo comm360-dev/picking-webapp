@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS orders (
   started_at TIMESTAMP,
   completed_at TIMESTAMP,
   prepared_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  held_for_stock BOOLEAN DEFAULT false,
   synced BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
