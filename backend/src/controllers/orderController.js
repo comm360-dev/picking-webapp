@@ -9,8 +9,10 @@ class OrderController {
     try {
       console.log('🔄 Début de la synchronisation des commandes...');
 
-      // Récupérer les produits depuis WooCommerce
-      const wcProducts = await woocommerceService.getProducts();
+      // Récupérer TOUT le catalogue (paginé), pas seulement la 1ère page :
+      // indispensable pour que les UGS soient complètes et à jour, et pour que
+      // la neutralisation des réaffectations d'UGS (Product.bulkUpsert) soit fiable.
+      const wcProducts = await woocommerceService.getAllProducts();
       console.log(`📥 ${wcProducts.length} produits récupérés depuis WooCommerce`);
 
       // Transformer les produits pour inclure l'image

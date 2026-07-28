@@ -95,6 +95,25 @@ class Product {
       const insertedProducts = [];
       const skippedProducts = [];
 
+      // ── Phase 1 : neutraliser les UGS concernées par une réaffectation ──
+      // Le client réutilise les UGS comme des emplacements : une même UGS peut
+      // passer d'un produit à un autre. Sous la contrainte d'unicité, cela crée
+      // une collision selon l'ordre de traitement. On renomme donc au préalable,
+      // avec une valeur temporaire unique, l'UGS de tout produit existant qui va
+      // être ré-écrit par le lot (même wc_id) ou dont l'UGS est réclamée par un
+      // autre produit du lot. Après cette étape, la phase 2 assigne les UGS
+      // finales sans aucune collision, quel que soit l'ordre de traitement.
+      const incomingWcIds = new Set(products.map(p => p.wc_id || p.id));
+      const incomingSkus = new Set(products.map(p => p.sku || `PRODUCT-${p.wc_id || p.id}`));
+
+      const existing = await client.query('SELECT id, wc_id, sku FROM products');
+      for (const row of existing.rows) {
+        if (incomingWcIds.has(row.wc_id) || incomingSkus.has(row.sku)) {
+          await client.query('UPDATE products SET sku = $1 WHERE id = $2', [`__tmp_${row.id}`, row.id]);
+        }
+      }
+
+      // ── Phase 2 : upsert des produits WooCommerce (source de vérité) ──
       for (const product of products) {
         // Utiliser wc_id au lieu de id
         const wcId = product.wc_id || product.id;
@@ -141,9 +160,11 @@ class Product {
           await client.query('ROLLBACK TO SAVEPOINT product_sp');
           await client.query('RELEASE SAVEPOINT product_sp');
           if (err.code === '23505') {
-            // SKU (ou autre clé) en doublon : on ignore ce produit sans casser la synchro
+            // Après la phase 1, une collision restante = deux produits VIVANTS
+            // partagent réellement la même UGS dans WooCommerce (doublon
+            // irréductible). On ignore le second en le signalant.
             skippedProducts.push({ sku, wcId, name: product.name });
-            console.warn(`⚠️  Produit ignoré (doublon "${err.constraint}", SKU "${sku}", WC ID ${wcId} - ${product.name}). À corriger dans WooCommerce.`);
+            console.warn(`⚠️  Produit ignoré (UGS "${sku}" partagée par deux produits actifs, WC ID ${wcId} - ${product.name}). À corriger dans WooCommerce.`);
           } else {
             throw err;
           }
