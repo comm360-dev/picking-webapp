@@ -150,12 +150,13 @@ export default { name: 'DashboardView' }
 
 <script setup>
 import { ref, computed, onActivated, onDeactivated, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import OrderCard from '../components/common/OrderCard.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
 
@@ -231,9 +232,18 @@ onDeactivated(() => {
 // On restaure la position de défilement après le rechargement des données et le rendu,
 // car le keep-alive + la transition de page empêchent le scrollBehavior du routeur d'y arriver.
 onActivated(async () => {
+  // Ouverture ciblée d'un onglet (ex. retour sur les commandes en attente après
+  // avoir finalisé une commande en attente). Paramètre consommé une seule fois.
+  const forcedTab = route.query.tab
+  if (forcedTab) {
+    activeTab.value = String(forcedTab)
+    router.replace({ query: {} })
+  }
+
   await ordersStore.fetchOrders()
   await nextTick()
-  window.scrollTo(0, savedScroll.value)
+  // Onglet forcé → haut de liste ; sinon on restaure la position mémorisée.
+  window.scrollTo(0, forcedTab ? 0 : savedScroll.value)
 })
 
 function onSortChange() {

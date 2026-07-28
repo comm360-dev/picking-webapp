@@ -113,29 +113,24 @@
 
       <!-- Mode picking article par article -->
       <div v-else class="item-picking">
-        <!-- Article actuel -->
-        <div class="current-item-card" v-if="currentItem">
-          <div class="item-image-large" v-if="currentItem.image_url">
-            <img :src="getImageUrl(currentItem.image_url)" :alt="currentItem.name" />
-          </div>
-          <div class="item-image-placeholder" v-else>
-            <span>📦</span>
-          </div>
-
-          <div class="item-details">
-            <h2 class="item-name">{{ currentItem.name }}</h2>
-            <p class="item-sku">SKU: <strong>{{ currentItem.sku }}</strong></p>
-            <p v-if="currentItem.location" class="item-location">📍 {{ currentItem.location }}</p>
-          </div>
+        <!-- Infos article : nom, UGS, quantité (au-dessus de la caméra) -->
+        <div class="current-item-header" v-if="currentItem">
+          <h2 class="item-name">{{ currentItem.name }}</h2>
+          <p class="item-sku">UGS: <strong>{{ currentItem.sku }}</strong></p>
+          <p v-if="currentItem.location" class="item-location">📍 {{ currentItem.location }}</p>
 
           <div class="quantity-display">
-            <span class="qty-picked">{{ currentItem.picked_quantity || 0 }}</span>
-            <span class="qty-separator">/</span>
-            <span class="qty-total">{{ currentItem.quantity }}</span>
+            <div class="qty-to-pick">
+              <span class="qty-label">À prélever</span>
+              <span class="qty-number">{{ currentItem.quantity }}</span>
+            </div>
+            <div class="scan-progress" v-if="currentRequiredScans > 1">
+              Scan {{ currentScansDone }}/{{ currentRequiredScans }}
+            </div>
           </div>
         </div>
 
-        <!-- Scanner -->
+        <!-- Scanner (caméra) prioritaire, visible sans défiler -->
         <div class="scanner-section">
           <QRScanner v-if="!scannerPaused" @scan="handleScan" class="scanner-wrapper" />
           <div v-else class="scanner-paused">
@@ -151,6 +146,17 @@
               class="sku-input"
             />
             <button @click="validateManualSku" class="btn-validate">OK</button>
+          </div>
+        </div>
+
+        <!-- Photo pour vérification (plus bas) -->
+        <div class="current-item-photo" v-if="currentItem">
+          <span class="photo-label">Vérification</span>
+          <div class="item-image-large" v-if="currentItem.image_url">
+            <img :src="getImageUrl(currentItem.image_url)" :alt="currentItem.name" />
+          </div>
+          <div class="item-image-placeholder" v-else>
+            <span>📦</span>
           </div>
         </div>
 
@@ -280,6 +286,14 @@ const unpickedItems = computed(() => {
 // Article actuel à scanner
 const currentItem = computed(() => {
   return unpickedItems.value[currentItemIndex.value] || null
+})
+
+// Nombre de scans requis pour l'article courant (plafonné à 3) et scans déjà faits
+const currentRequiredScans = computed(() => {
+  return currentItem.value ? Math.min(currentItem.value.quantity, 3) : 0
+})
+const currentScansDone = computed(() => {
+  return currentItem.value ? (currentItem.value.picked_quantity || 0) : 0
 })
 
 const totalItems = computed(() => {
@@ -451,19 +465,25 @@ async function markItemAsPicked(item) {
     // Pause le scanner immédiatement
     scannerPaused.value = true
 
-    const newPickedQty = (item.picked_quantity || 0) + 1
-    const isPicked = newPickedQty >= item.quantity
+    // Plafonner à 3 scans maximum pour les grosses quantités (gain de temps).
+    // La vraie quantité attendue est enregistrée à la complétion : le préparateur
+    // prend bien toutes les pièces, on ne lui demande simplement pas de scanner
+    // 60 fois pour 60 unités.
+    const requiredScans = Math.min(item.quantity, 3)
+    const scansDone = (item.picked_quantity || 0) + 1
+    const isPicked = scansDone >= requiredScans
+    const recordedQty = isPicked ? item.quantity : scansDone
     const orderId = parseInt(route.params.id)
 
-    item.picked_quantity = newPickedQty
+    item.picked_quantity = recordedQty
     item.is_picked = isPicked
 
     await orderItemsDB.update(item.id, {
-      picked_quantity: newPickedQty,
+      picked_quantity: recordedQty,
       is_picked: isPicked
     })
 
-    await syncService.markItemPicked(orderId, item.id, newPickedQty)
+    await syncService.markItemPicked(orderId, item.id, recordedQty)
 
     feedbackService.success()
 
@@ -480,7 +500,7 @@ async function markItemAsPicked(item) {
     }
 
     // Masquer l'overlay et réactiver le scanner après un délai
-    const pauseDuration = isPicked ? 1200 : 750 // Plus long si on passe à un autre article
+    const pauseDuration = isPicked ? 400 : 250 // Flash de validation quasi instantané
     setTimeout(() => {
       successOverlay.value = null
       scannerPaused.value = false
@@ -488,7 +508,7 @@ async function markItemAsPicked(item) {
 
     if (syncService.isOnline()) {
       api.put(`/orders/${orderId}/items/${item.id}/pick`, {
-        pickedQuantity: newPickedQty
+        pickedQuantity: recordedQty
       }).catch(err => console.warn('Sync API error:', err.message))
     }
   } catch (err) {
@@ -563,9 +583,23 @@ async function confirmCompleteWithMissing() {
 async function completeAndNext() {
   completing.value = true
 
+  // Une commande issue d'une mise en attente : on retourne à la liste des
+  // commandes en attente (au lieu d'enchaîner sur une commande en préparation),
+  // pour que le préparateur voie s'il reste des commandes à compléter avec le
+  // même article réapprovisionné.
+  const wasHeld = !!order.value.held_for_stock
+
   try {
     await ordersStore.completeOrder(order.value.id)
     await ordersStore.fetchOrders()
+
+    if (wasHeld) {
+      showFeedback('🎉 Commande finalisée !', 'success')
+      setTimeout(() => {
+        router.push('/dashboard?tab=on-hold')
+      }, 800)
+      return
+    }
 
     const nextOrder = ordersStore.pendingOrders[0]
 
@@ -745,51 +779,21 @@ function goToFullView() {
   padding: 1rem;
 }
 
-.current-item-card {
+/* En-tête article : nom + UGS + quantité, au-dessus de la caméra */
+.current-item-header {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
   text-align: center;
   margin-bottom: 1rem;
   border: 2px solid var(--primary);
   box-shadow: 0 4px 20px rgba(12, 180, 212, 0.15);
 }
 
-.item-image-large {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 1rem;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--bg-secondary);
-}
-
-.item-image-large img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.item-image-placeholder {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 1rem;
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 4rem;
-}
-
-.item-details {
-  margin-bottom: 1rem;
-}
-
 .item-name {
   font-size: 1.25rem;
   font-weight: 700;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.375rem;
   color: var(--text-primary);
 }
 
@@ -815,25 +819,81 @@ function goToFullView() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  margin-top: 1rem;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
 }
 
-.qty-picked {
+.qty-to-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.qty-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.qty-number {
   font-size: 3rem;
   font-weight: 800;
   color: var(--primary);
 }
 
-.qty-separator {
-  font-size: 2rem;
-  color: var(--text-tertiary);
+.scan-progress {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
 }
 
-.qty-total {
-  font-size: 3rem;
-  font-weight: 800;
-  color: var(--text-secondary);
+/* Photo de vérification, sous la caméra */
+.current-item-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.photo-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.item-image-large {
+  width: 130px;
+  height: 130px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.item-image-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.item-image-placeholder {
+  width: 130px;
+  height: 130px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
 }
 
 /* Scanner */
@@ -1371,10 +1431,10 @@ function goToFullView() {
   margin-top: 0.25rem;
 }
 
-/* Transition pour l'overlay */
+/* Transition pour l'overlay (courte pour un flash quasi instantané) */
 .success-overlay-enter-active,
 .success-overlay-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.1s ease;
 }
 
 .success-overlay-enter-from,
