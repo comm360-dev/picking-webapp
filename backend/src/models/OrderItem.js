@@ -160,33 +160,53 @@ class OrderItem {
         } else {
           console.warn(`  ⚠️  Produit non trouvé pour item: ${item.name} (product_id=${item.product_id})`);
           // Créer le produit s'il n'existe pas
+          const sku = item.sku || `PRODUCT-${item.product_id}`;
           const wcImageUrl = item.image && item.image.src ? item.image.src : null;
           // Convertir en URL proxy pour éviter CORS/Mixed Content
           const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
           console.log(`  📸 Image pour ${item.name}: ${imageUrl ? 'PROXY' : 'NON'}`);
-          const newProduct = await client.query(
-            `INSERT INTO products (wc_id, sku, name, price, stock_quantity, image_url)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (wc_id) DO UPDATE SET name = EXCLUDED.name, image_url = EXCLUDED.image_url
-             RETURNING *`,
-            [
-              item.product_id,
-              item.sku || `PRODUCT-${item.product_id}`,
-              item.name,
-              item.price || 0,
-              0,
-              imageUrl
-            ]
-          );
+
+          let productId = null;
+
+          // On isole la création dans un point de sauvegarde : si le SKU est déjà
+          // pris par un autre produit (doublon d'UGS), on relie l'article au produit
+          // existant portant ce SKU au lieu de faire échouer toute la synchro.
+          await client.query('SAVEPOINT item_product_sp');
+          try {
+            const newProduct = await client.query(
+              `INSERT INTO products (wc_id, sku, name, price, stock_quantity, image_url)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT (wc_id) DO UPDATE SET name = EXCLUDED.name, image_url = EXCLUDED.image_url
+               RETURNING *`,
+              [item.product_id, sku, item.name, item.price || 0, 0, imageUrl]
+            );
+            productId = newProduct.rows[0].id;
+            await client.query('RELEASE SAVEPOINT item_product_sp');
+            console.log(`  ✓ Produit créé et item ajouté: ${item.name}`);
+          } catch (err) {
+            await client.query('ROLLBACK TO SAVEPOINT item_product_sp');
+            await client.query('RELEASE SAVEPOINT item_product_sp');
+            if (err.code === '23505') {
+              const existing = await client.query('SELECT id FROM products WHERE sku = $1 LIMIT 1', [sku]);
+              if (existing.rows[0]) {
+                productId = existing.rows[0].id;
+                console.warn(`  ↪️  SKU "${sku}" déjà utilisé : article "${item.name}" relié au produit existant.`);
+              } else {
+                console.warn(`  ⚠️  Article "${item.name}" ignoré (conflit SKU "${sku}" non résolu).`);
+                continue;
+              }
+            } else {
+              throw err;
+            }
+          }
 
           const result = await client.query(
             `INSERT INTO order_items (order_id, product_id, quantity)
              VALUES ($1, $2, $3)
              RETURNING *`,
-            [orderId, newProduct.rows[0].id, item.quantity]
+            [orderId, productId, item.quantity]
           );
           insertedItems.push(result.rows[0]);
-          console.log(`  ✓ Produit créé et item ajouté: ${item.name}`);
         }
       }
 
