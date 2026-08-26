@@ -273,6 +273,7 @@ import feedbackService from '../services/feedback'
 import QRScanner from '../components/QRScanner.vue'
 import { ordersDB, orderItemsDB } from '../services/db'
 import syncService from '../services/sync'
+import { trierParParcours } from '../utils/pickingOrder'
 
 const router = useRouter()
 const route = useRoute()
@@ -331,12 +332,10 @@ const hasMissingItems = computed(() => {
   return order.value.items.some(item => item.is_missing)
 })
 
-// Articles triés par QR code pour optimiser le parcours dans l'entrepôt
+// Articles triés selon le parcours d'entrepôt (cf. utils/pickingOrder)
 const sortedItems = computed(() => {
   if (!order.value?.items) return []
-  return [...order.value.items].sort((a, b) =>
-    (a.qr_code || '').localeCompare(b.qr_code || '', 'fr', { numeric: true, sensitivity: 'base' })
-  )
+  return trierParParcours(order.value.items)
 })
 
 const isOnHold = computed(() => {

@@ -254,6 +254,7 @@ import { ordersDB, orderItemsDB } from '../services/db'
 import feedbackService from '../services/feedback'
 import { useOrdersStore } from '../stores/orders'
 import QRScanner from '../components/QRScanner.vue'
+import { comparerParParcours } from '../utils/pickingOrder'
 
 const router = useRouter()
 const route = useRoute()
@@ -275,12 +276,12 @@ const scannerPaused = ref(false)
 const successOverlay = ref(null)
 
 // Liste des articles non encore complètement scannés (ni picked ni missing)
-// Triés par QR code pour optimiser le parcours dans l'entrepôt
+// Triés selon le parcours d'entrepôt (cf. utils/pickingOrder)
 const unpickedItems = computed(() => {
   if (!order.value?.items) return []
   return order.value.items
     .filter(item => !item.is_picked && !item.is_missing)
-    .sort((a, b) => (a.qr_code || '').localeCompare(b.qr_code || '', 'fr', { numeric: true, sensitivity: 'base' }))
+    .sort(comparerParParcours)
 })
 
 // Article actuel à scanner
@@ -490,7 +491,7 @@ async function markItemAsPicked(item) {
     // Trouver le prochain article (après que l'item actuel sorte de unpickedItems)
     const remainingItems = order.value.items
       .filter(i => !i.is_picked && !i.is_missing && i.id !== item.id)
-      .sort((a, b) => (a.qr_code || '').localeCompare(b.qr_code || '', 'fr', { numeric: true, sensitivity: 'base' }))
+      .sort(comparerParParcours)
     const nextItem = remainingItems[0]
 
     // Afficher l'overlay de confirmation

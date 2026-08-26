@@ -146,7 +146,11 @@ class Order {
       `SELECT oi.*, p.name, p.sku, p.location, p.qr_code, p.image_url
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
-       WHERE oi.order_id = $1`,
+       WHERE oi.order_id = $1
+       -- L'UGS sert de code d'emplacement (A2-41, C4-23...) : on l'utilise pour
+       -- ordonner le parcours. Sans ORDER BY, chaque prélèvement (UPDATE) déplaçait
+       -- la ligne dans le heap et réordonnait la liste sous les yeux du préparateur.
+       ORDER BY p.sku ASC NULLS LAST, oi.id ASC`,
       [orderId]
     );
 
