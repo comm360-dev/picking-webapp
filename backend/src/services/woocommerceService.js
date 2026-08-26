@@ -274,6 +274,22 @@ class WooCommerceService {
     }
   }
 
+  // WooCommerce n'accepte via son API REST que les statuts déclarés par le filtre
+  // wc_order_statuses. Un statut créé avec le seul register_post_status existe en base
+  // mais est rejeté ici : on le vérifie plutôt que de le découvrir commande par commande.
+  async isOrderStatusAccepted(status) {
+    if (this.useMockData) return true;
+
+    try {
+      await this.api.get('orders', { status, per_page: 1 });
+      return true;
+    } catch (error) {
+      if (error.response?.status === 400) return false;
+      // Panne réseau ou autre : on ne conclut rien, l'appelant décidera.
+      throw error;
+    }
+  }
+
   async updateOrderStatus(orderId, status) {
     if (this.useMockData) {
       console.log(`🔄 Mock: Mise à jour commande #${orderId} vers ${status}`);

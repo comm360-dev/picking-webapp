@@ -11,6 +11,7 @@ const imageProxyRoutes = require('./routes/imageProxyRoutes');
 const setupRoutes = require('./routes/setupRoutes');
 const quoteRoutes = require('./routes/quoteRoutes');
 const pool = require('./config/database');
+const woocommerceService = require('./services/woocommerceService');
 
 const app = express();
 
@@ -146,8 +147,31 @@ async function runMigrations() {
   }
 }
 
+// Le statut poussé sur WooCommerce à la validation d'une commande est configurable.
+// S'il n'est pas reconnu, chaque validation échouerait en silence (l'erreur est
+// volontairement non bloquante plus bas, pour ne pas perdre le travail du préparateur).
+// On le vérifie donc une fois au démarrage, où le message est visible dans les logs.
+async function checkOrderStatusConfig() {
+  const statut = process.env.WC_STATUS_ON_COMPLETE;
+  if (!statut) return;
+
+  try {
+    if (await woocommerceService.isOrderStatusAccepted(statut)) {
+      console.log(`✅ WC_STATUS_ON_COMPLETE="${statut}" accepté par WooCommerce`);
+      return;
+    }
+    console.error(`❌ WC_STATUS_ON_COMPLETE="${statut}" est refusé par WooCommerce.`);
+    console.error('   Les commandes validées dans l\'app resteront inchangées sur le site.');
+    console.error('   Le statut doit être déclaré par le filtre wc_order_statuses, pas seulement');
+    console.error('   par register_post_status, et sans garde is_admin().');
+  } catch (error) {
+    console.warn(`⚠️  Vérification de WC_STATUS_ON_COMPLETE impossible: ${error.message}`);
+  }
+}
+
 // Exécuter les migrations au démarrage
 runMigrations();
+checkOrderStatusConfig();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({

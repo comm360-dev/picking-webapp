@@ -288,18 +288,23 @@ class OrderController {
       });
 
       // Mettre à jour le statut sur WooCommerce
+      let wcSyncError = null;
       try {
         console.log(`🔄 Commande #${order.wc_id} -> statut WooCommerce "${WC_STATUS_ON_COMPLETE}"...`);
         await woocommerceService.updateOrderStatus(order.wc_id, WC_STATUS_ON_COMPLETE);
         console.log(`✅ Statut WooCommerce mis à jour pour la commande #${order.wc_id}`);
       } catch (wcError) {
-        console.error('⚠️  Erreur lors de la mise à jour WooCommerce:', wcError.message);
-        // On continue même si la mise à jour WooCommerce échoue
+        // Non bloquant : le préparateur a fait son travail, on ne le lui reprend pas
+        // parce que le site est injoignable. Mais on le dit fort, et on le remonte dans
+        // la réponse — un statut mal configuré ferait échouer toutes les commandes.
+        wcSyncError = wcError.message;
+        console.error(`❌ Commande #${order.wc_id} : statut "${WC_STATUS_ON_COMPLETE}" NON appliqué sur WooCommerce — ${wcError.message}`);
       }
 
       res.json({
         message: 'Commande marquée comme terminée',
-        order
+        order,
+        ...(wcSyncError && { wcSyncError })
       });
     } catch (error) {
       console.error('Erreur completeOrder:', error);
