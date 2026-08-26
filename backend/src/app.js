@@ -160,13 +160,23 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
+// Sonde de vie de l'API, toujours disponible.
+app.get('/api', (req, res) => {
   res.json({
     message: 'Picking WebApp API',
     version: '1.0.0',
     status: 'operational'
   });
 });
+
+// En production ce service sert aussi l'application : la racine doit rendre l'app,
+// pas ce JSON. express.static s'en charge plus bas (index.html par défaut). En
+// développement le frontend a son propre serveur Vite, la racine reste informative.
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/', (req, res) => {
+    res.redirect('/api');
+  });
+}
 
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);

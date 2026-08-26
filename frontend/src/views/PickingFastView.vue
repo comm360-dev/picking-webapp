@@ -407,7 +407,10 @@ async function resumeOnHoldOrder() {
 function getImageUrl(url) {
   if (!url) return ''
   if (url.startsWith('/api/image-proxy')) {
-    return import.meta.env.VITE_API_URL?.replace('/api', '') + url || url
+    // Sans repli, une VITE_API_URL absente donnait la chaîne "undefined/api/...",
+    // que le `|| url` ne rattrapait pas puisqu'elle est vérité. Avec VITE_API_URL=/api
+    // (même origine que l'API), le préfixe est vide et l'URL reste relative.
+    return (import.meta.env.VITE_API_URL || '').replace('/api', '') + url
   }
   return url
 }

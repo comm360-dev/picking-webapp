@@ -1,11 +1,16 @@
 services:
-  # Backend API
+  # Service unique : l'API Express sert aussi le frontend compilé.
+  # C'est l'URL ouverte par les préparateurs (picking-webapp.onrender.com).
   - type: web
-    name: picking-webapp-api
+    name: picking-webapp
     env: node
     region: frankfurt
     plan: free
-    buildCommand: cd backend && npm install
+    # Le frontend est construit ici : app.js le sert depuis frontend/dist quand
+    # NODE_ENV=production. VITE_API_URL=/api est indispensable — Vite fige cette
+    # valeur dans le bundle, et sans elle le navigateur du préparateur appellerait
+    # http://localhost:3000/api. Servi sur la même origine, un chemin relatif suffit.
+    buildCommand: cd frontend && npm install && VITE_API_URL=/api npm run build && cd ../backend && npm install
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -29,22 +34,6 @@ services:
       # Vide = completed. À renseigner avec le statut « prêt pour expédition ».
       - key: WC_STATUS_ON_COMPLETE
         sync: false
-
-  # Frontend (Static Site)
-  - type: web
-    name: picking-webapp
-    env: static
-    region: frankfurt
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://picking-webapp-api.onrender.com/api/*
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=3600
 
 databases:
   - name: picking-db
