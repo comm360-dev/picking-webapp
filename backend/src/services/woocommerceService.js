@@ -244,6 +244,36 @@ class WooCommerceService {
     }
   }
 
+  // Récupère des commandes précises par leur identifiant WooCommerce, quel que soit
+  // leur statut. Sert à réconcilier les commandes mises en attente dans l'app : elles
+  // ne remontent plus dans les listes processing/preparation, mais leur sort peut avoir
+  // été tranché sur le site (terminée, annulée, expédiée).
+  async getOrdersByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+
+    if (this.useMockData) {
+      return MOCK_ORDERS.filter(o => ids.includes(o.id));
+    }
+
+    try {
+      const found = [];
+      // `include` est plafonné par per_page : on interroge par paquets de 100.
+      for (let i = 0; i < ids.length; i += 100) {
+        const lot = ids.slice(i, i + 100);
+        const response = await this.api.get('orders', {
+          include: lot.join(','),
+          status: 'any',
+          per_page: 100
+        });
+        found.push(...response.data);
+      }
+      return found;
+    } catch (error) {
+      console.error('Erreur WooCommerce getOrdersByIds:', error.message);
+      throw error;
+    }
+  }
+
   async updateOrderStatus(orderId, status) {
     if (this.useMockData) {
       console.log(`🔄 Mock: Mise à jour commande #${orderId} vers ${status}`);

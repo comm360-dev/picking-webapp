@@ -74,6 +74,7 @@ dist/
    WC_URL=https://preprod.dadi8173.odns.fr
    WC_CONSUMER_KEY=[Votre clé WooCommerce]
    WC_CONSUMER_SECRET=[Votre secret WooCommerce]
+   WC_STATUS_ON_COMPLETE=[Slug du statut « prêt pour expédition » ; vide = completed]
    ```
 
 5. Cliquez sur **"Create Web Service"**

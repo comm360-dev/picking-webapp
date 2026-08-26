@@ -4,6 +4,25 @@ const Product = require('../models/Product');
 const History = require('../models/History');
 const woocommerceService = require('../services/woocommerceService');
 
+// Correspondance entre le statut d'une commande sur WooCommerce et son statut dans l'app.
+// Une commande mise en attente ici garde le statut 'processing' côté site : tant que le
+// site la considère encore à préparer, l'attente locale prime (c'est une information que
+// le site n'a pas). Dès qu'il a tranché — terminée, expédiée, annulée — c'est lui qui fait foi.
+// Statut poussé sur WooCommerce quand le préparateur valide une commande dans l'app.
+// « Terminée » doit rester réservé à la commande reçue par le client : on vise donc un
+// statut intermédiaire du type « prêt pour expédition ». Configurable pour pouvoir être
+// aligné sur le slug réellement déclaré dans WooCommerce sans redéploiement de code.
+const WC_STATUS_ON_COMPLETE = process.env.WC_STATUS_ON_COMPLETE || 'completed';
+
+const STATUTS_WC_ENCORE_A_PREPARER = ['processing', 'preparation', 'pending', 'on-hold', 'checkout-draft'];
+const STATUTS_WC_ABANDON = ['cancelled', 'refunded', 'failed'];
+
+function statutLocalDepuisWooCommerce(statutWc) {
+  if (STATUTS_WC_ENCORE_A_PREPARER.includes(statutWc)) return null;
+  if (STATUTS_WC_ABANDON.includes(statutWc)) return 'cancelled';
+  // 'completed' et tous les statuts d'expédition du transporteur (lpc_*)
+  return 'completed';
+}
 class OrderController {
   static async syncOrders(req, res) {
     try {
@@ -83,12 +102,45 @@ class OrderController {
         console.log(`🚫 ${cancelledCount} commande(s) marquée(s) comme annulée(s)`);
       }
 
+      // Réconcilier les commandes mises en attente ici avec leur sort réel sur le site.
+      // Elles ne remontent plus dans les listes processing/preparation ci-dessus et
+      // resteraient bloquées dans l'app indéfiniment : on va chercher leur statut.
+      const heldOrders = await Order.getAll({ status: 'on-hold' });
+      let reconciledCount = 0;
+      if (heldOrders.length > 0) {
+        try {
+          const wcHeld = await woocommerceService.getOrdersByIds(heldOrders.map(o => o.wc_id));
+          const statutParWcId = new Map(wcHeld.map(o => [o.id, o.status]));
+
+          for (const localOrder of heldOrders) {
+            const statutWc = statutParWcId.get(localOrder.wc_id);
+            // Commande introuvable sur le site (supprimée, corbeille) : on n'invente rien.
+            if (!statutWc) continue;
+
+            const nouveauStatut = statutLocalDepuisWooCommerce(statutWc);
+            if (nouveauStatut) {
+              await Order.updateStatus(localOrder.id, nouveauStatut);
+              console.log(`🔄 Commande #${localOrder.order_number} : "${statutWc}" sur WooCommerce -> "${nouveauStatut}" dans l'app`);
+              reconciledCount++;
+            }
+          }
+        } catch (error) {
+          // Une réconciliation ratée ne doit pas faire échouer toute la synchro.
+          console.error('⚠️  Réconciliation des commandes en attente impossible:', error.message);
+        }
+      }
+
+      if (reconciledCount > 0) {
+        console.log(`🔄 ${reconciledCount} commande(s) en attente réalignée(s) sur WooCommerce`);
+      }
+
       res.json({
         message: 'Synchronisation réussie',
         stats: {
           products: products.length,
           orders: orders.length,
           cancelled: cancelledCount,
+          reconciled: reconciledCount,
           mockMode: woocommerceService.isMockMode()
         }
       });
@@ -237,8 +289,8 @@ class OrderController {
 
       // Mettre à jour le statut sur WooCommerce
       try {
-        console.log(`🔄 Mise à jour du statut WooCommerce pour la commande #${order.wc_id}...`);
-        await woocommerceService.updateOrderStatus(order.wc_id, 'completed');
+        console.log(`🔄 Commande #${order.wc_id} -> statut WooCommerce "${WC_STATUS_ON_COMPLETE}"...`);
+        await woocommerceService.updateOrderStatus(order.wc_id, WC_STATUS_ON_COMPLETE);
         console.log(`✅ Statut WooCommerce mis à jour pour la commande #${order.wc_id}`);
       } catch (wcError) {
         console.error('⚠️  Erreur lors de la mise à jour WooCommerce:', wcError.message);
