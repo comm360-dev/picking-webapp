@@ -85,7 +85,8 @@
         </div>
       </div>
 
-      <!-- Articles manquants - proposer mise en attente ou finalisation -->
+      <!-- Articles manquants : la mise en attente est la seule issue possible.
+           Une commande incomplète ne doit jamais partir en expédition. -->
       <div v-else-if="allItemsPicked && hasMissingItems" class="hold-screen">
         <div class="hold-card">
           <div class="hold-icon">⚠️</div>
@@ -96,16 +97,14 @@
               <li v-for="item in missingItemsList" :key="item.id">{{ item.name }} (x{{ item.quantity }})</li>
             </ul>
           </div>
-          <p v-if="order.held_for_stock" class="hold-locked-note">
-            🔒 Cette commande a été mise en attente pour rupture. Elle ne pourra être
-            finalisée qu'une fois le ou les articles manquants réapprovisionnés et scannés.
+          <p class="hold-locked-note">
+            🔒 Cette commande ne peut pas être finalisée tant qu'un article manque.
+            Mettez-la en attente : elle sera finalisable une fois le ou les articles
+            réapprovisionnés et scannés.
           </p>
           <div class="hold-actions">
             <button @click="holdOrderAndNext" :disabled="holdingOrder" class="btn-hold-large">
               {{ holdingOrder ? 'Mise en attente...' : '⏸️ Mettre en attente' }}
-            </button>
-            <button v-if="pickedItems > 0 && !order.held_for_stock" @click="requestCompleteWithMissing" :disabled="completing" class="btn-complete-partial">
-              {{ completing ? 'Finalisation...' : '✅ Finaliser avec les articles scannés' }}
             </button>
           </div>
         </div>
@@ -197,28 +196,6 @@
         </div>
       </transition>
 
-      <!-- Modal de confirmation finalisation avec articles manquants -->
-      <div v-if="showCompleteConfirm" class="modal-overlay" @click.self="cancelCompleteWithMissing">
-        <div class="modal-content">
-          <h3>⚠️ Finaliser une commande incomplète ?</h3>
-          <p>
-            Cette commande contient <strong>{{ missingItemsCount }} article(s) manquant(s)</strong>.
-            Une fois finalisée, la commande sera marquée terminée.
-          </p>
-          <div class="missing-items-recap" v-if="missingItemsList.length > 0">
-            <ul>
-              <li v-for="item in missingItemsList" :key="item.id">{{ item.name }} (x{{ item.quantity }})</li>
-            </ul>
-          </div>
-          <div class="modal-actions">
-            <button @click="cancelCompleteWithMissing" class="btn-cancel">Annuler</button>
-            <button @click="confirmCompleteWithMissing" :disabled="completing" class="btn-confirm-danger">
-              {{ completing ? 'Finalisation...' : 'Confirmer la finalisation' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Modal produit manquant -->
       <div v-if="showMissingModal" class="modal-overlay" @click.self="closeMissingModal">
         <div class="modal-content">
@@ -268,7 +245,6 @@ const feedback = ref(null)
 const completing = ref(false)
 const holdingOrder = ref(false)
 const showMissingModal = ref(false)
-const showCompleteConfirm = ref(false)
 const outOfStock = ref(false)
 const missingNotes = ref('')
 const currentItemIndex = ref(0)
@@ -568,18 +544,6 @@ async function confirmMissing() {
   }
 }
 
-function requestCompleteWithMissing() {
-  showCompleteConfirm.value = true
-}
-
-function cancelCompleteWithMissing() {
-  showCompleteConfirm.value = false
-}
-
-async function confirmCompleteWithMissing() {
-  showCompleteConfirm.value = false
-  await completeAndNext()
-}
 
 async function completeAndNext() {
   completing.value = true
@@ -1200,19 +1164,6 @@ function goToFullView() {
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
 }
 
-.btn-complete-partial {
-  width: 100%;
-  padding: 1.25rem;
-  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-}
-
 /* Feedback toast */
 .feedback-toast {
   position: fixed;
@@ -1340,22 +1291,6 @@ function goToFullView() {
   color: white;
   font-weight: 600;
   cursor: pointer;
-}
-
-.btn-confirm-danger {
-  flex: 1;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-  border: none;
-  border-radius: var(--radius-md);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-confirm-danger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* Scanner en pause */

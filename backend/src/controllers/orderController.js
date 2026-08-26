@@ -205,6 +205,18 @@ class OrderController {
       const { id } = req.params;
       const userId = req.user.id;
 
+      // Une commande à laquelle il manque un article ne part pas : elle doit être
+      // mise en attente. Le contrôle est ici et pas seulement dans l'interface, car
+      // l'app fonctionne hors ligne et rejoue ses actions en différé.
+      const missing = await OrderItem.getMissing(id);
+      if (missing.length > 0) {
+        return res.status(409).json({
+          message: `Commande incomplète : ${missing.length} article(s) manquant(s). Mettez-la en attente.`,
+          code: 'ORDER_HAS_MISSING_ITEMS',
+          missingItems: missing
+        });
+      }
+
       const order = await Order.completePicking(id, userId);
 
       if (!order) {
