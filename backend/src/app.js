@@ -189,7 +189,10 @@ app.get('/api', (req, res) => {
   res.json({
     message: 'Picking WebApp API',
     version: '1.0.0',
-    status: 'operational'
+    status: 'operational',
+    // Statut poussé sur WooCommerce à la validation d'une commande : le rendre lisible
+    // ici permet de vérifier la configuration du service sans accès au dashboard.
+    completionStatus: process.env.WC_STATUS_ON_COMPLETE || 'completed'
   });
 });
 
