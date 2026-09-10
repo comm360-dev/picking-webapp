@@ -1,0 +1,11 @@
+# Copier en ngrok.yml (ignoré par git) et renseigner son propre jeton :
+# https://dashboard.ngrok.com/get-started/your-authtoken
+version: "2"
+authtoken: VOTRE_JETON_NGROK
+tunnels:
+  frontend:
+    proto: http
+    addr: 5173
+  backend:
+    proto: http
+    addr: 3000
