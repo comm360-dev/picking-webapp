@@ -10,7 +10,9 @@ services:
     # NODE_ENV=production. VITE_API_URL=/api est indispensable — Vite fige cette
     # valeur dans le bundle, et sans elle le navigateur du préparateur appellerait
     # http://localhost:3000/api. Servi sur la même origine, un chemin relatif suffit.
-    buildCommand: cd frontend && npm install && VITE_API_URL=/api npm run build && cd ../backend && npm install
+    # --include=dev : NODE_ENV=production fait sauter les devDependencies à npm,
+    # or Vite et ses plugins en font partie ; sans lui le build échoue (« vite: not found »).
+    buildCommand: cd frontend && npm install --include=dev && VITE_API_URL=/api npm run build && cd ../backend && npm install
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
