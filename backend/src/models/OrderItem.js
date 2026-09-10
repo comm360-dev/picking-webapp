@@ -163,11 +163,13 @@ class OrderItem {
       console.log(`📦 Création de ${scannableItems.length} items pour commande ${orderId} (${items.length - scannableItems.length} lot(s) intelligent(s) ignoré(s))`);
 
       for (const item of scannableItems) {
-        // Trouver le produit correspondant par wc_id
-        const product = products.find(p => p.wc_id === item.product_id);
+        // Une ligne de variation porte deux identifiants : product_id (le parent) et
+        // variation_id (ce que le client a choisi). C'est la variation qu'on prélève.
+        const wcId = item.variation_id || item.product_id;
+        const product = products.find(p => p.wc_id === wcId);
 
         if (product) {
-          console.log(`  ✓ Item trouvé: ${item.name} (product_id=${item.product_id}, db_id=${product.id})`);
+          console.log(`  ✓ Item trouvé: ${item.name} (wc_id=${wcId}, db_id=${product.id})`);
           const result = await client.query(
             `INSERT INTO order_items (order_id, product_id, quantity)
              VALUES ($1, $2, $3)
@@ -176,9 +178,9 @@ class OrderItem {
           );
           insertedItems.push(result.rows[0]);
         } else {
-          console.warn(`  ⚠️  Produit non trouvé pour item: ${item.name} (product_id=${item.product_id})`);
+          console.warn(`  ⚠️  Produit non trouvé pour item: ${item.name} (wc_id=${wcId})`);
           // Créer le produit s'il n'existe pas
-          const sku = item.sku || `PRODUCT-${item.product_id}`;
+          const sku = item.sku || `PRODUCT-${wcId}`;
           const wcImageUrl = item.image && item.image.src ? item.image.src : null;
           // Convertir en URL proxy pour éviter CORS/Mixed Content
           const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
@@ -196,7 +198,7 @@ class OrderItem {
                VALUES ($1, $2, $3, $4, $5, $6)
                ON CONFLICT (wc_id) DO UPDATE SET name = EXCLUDED.name, image_url = EXCLUDED.image_url
                RETURNING *`,
-              [item.product_id, sku, item.name, item.price || 0, 0, imageUrl]
+              [wcId, sku, item.name, item.price || 0, 0, imageUrl]
             );
             productId = newProduct.rows[0].id;
             await client.query('RELEASE SAVEPOINT item_product_sp');

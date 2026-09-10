@@ -130,8 +130,8 @@ class Product {
         await client.query('SAVEPOINT product_sp');
         try {
           const result = await client.query(
-            `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url, weight)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO products (wc_id, sku, name, price, stock_quantity, location, qr_code, image_url, weight, parent_wc_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (wc_id)
              DO UPDATE SET
                sku = EXCLUDED.sku,
@@ -140,6 +140,7 @@ class Product {
                stock_quantity = EXCLUDED.stock_quantity,
                image_url = EXCLUDED.image_url,
                weight = EXCLUDED.weight,
+               parent_wc_id = EXCLUDED.parent_wc_id,
                updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
             [
@@ -151,7 +152,8 @@ class Product {
               product.location || null,
               product.qr_code || null,
               product.image_url || null,
-              product.weight || 0
+              product.weight || 0,
+              product.parent_wc_id || null
             ]
           );
           insertedProducts.push(result.rows[0]);

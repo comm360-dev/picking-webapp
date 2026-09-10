@@ -141,6 +141,21 @@ async function runMigrations() {
       END $$;
     `);
 
+    // Rattacher une variation à son produit parent WooCommerce
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'products' AND column_name = 'parent_wc_id'
+        ) THEN
+          ALTER TABLE products ADD COLUMN parent_wc_id INTEGER;
+          CREATE INDEX IF NOT EXISTS idx_products_parent_wc_id ON products(parent_wc_id);
+          RAISE NOTICE 'Colonne parent_wc_id ajoutée à products';
+        END IF;
+      END $$;
+    `);
+
     console.log('✅ Migrations terminées');
   } catch (error) {
     console.error('⚠️ Erreur migration (non bloquante):', error.message);

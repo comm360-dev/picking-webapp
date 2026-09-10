@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const wooCommerceService = require('../services/woocommerceService');
+const { mapProduct, mapVariation } = require('../utils/productMapper');
 
 class ProductController {
   static async getAllProducts(req, res) {
@@ -25,23 +26,12 @@ class ProductController {
 
       console.log(`📦 ${wcProducts.length} produits à synchroniser`);
 
-      // Transformer les produits WooCommerce pour notre format
-      const productsData = wcProducts.map(wcProduct => {
-        const wcImageUrl = wcProduct.images && wcProduct.images.length > 0 ? wcProduct.images[0].src : null;
-        // Convertir l'URL WooCommerce en URL proxy pour éviter CORS/Mixed Content
-        const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
-
-        return {
-          wc_id: wcProduct.id,
-          name: wcProduct.name,
-          sku: wcProduct.sku || `PRODUCT-${wcProduct.id}`,
-          price: parseFloat(wcProduct.price || 0),
-          stock_quantity: wcProduct.stock_quantity || 0,
-          location: null,
-          qr_code: null,
-          image_url: imageUrl
-        };
-      });
+      // Les variations rejoignent le catalogue comme des produits à part entière
+      const variations = await wooCommerceService.getAllVariations(wcProducts);
+      const productsData = [
+        ...wcProducts.map(mapProduct),
+        ...variations.map(({ parent, variation }) => mapVariation(parent, variation))
+      ];
 
       // Insérer/Mettre à jour en base de données
       await Product.bulkUpsert(productsData);

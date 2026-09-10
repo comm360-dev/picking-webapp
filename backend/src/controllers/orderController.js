@@ -3,6 +3,7 @@ const OrderItem = require('../models/OrderItem');
 const Product = require('../models/Product');
 const History = require('../models/History');
 const woocommerceService = require('../services/woocommerceService');
+const { mapProduct, mapVariation } = require('../utils/productMapper');
 
 // Correspondance entre le statut d'une commande sur WooCommerce et son statut dans l'app.
 // Une commande mise en attente ici garde le statut 'processing' côté site : tant que le
@@ -34,23 +35,12 @@ class OrderController {
       const wcProducts = await woocommerceService.getAllProducts();
       console.log(`📥 ${wcProducts.length} produits récupérés depuis WooCommerce`);
 
-      // Transformer les produits pour inclure l'image
-      const productsData = wcProducts.map(wcProduct => {
-        const wcImageUrl = wcProduct.images && wcProduct.images.length > 0 ? wcProduct.images[0].src : null;
-        // Convertir l'URL WooCommerce en URL proxy pour éviter CORS/Mixed Content
-        const imageUrl = wcImageUrl ? `/api/image-proxy?url=${encodeURIComponent(wcImageUrl)}` : null;
-        console.log(`🖼️  Produit ${wcProduct.id} (${wcProduct.name}): image = ${imageUrl ? 'PROXY' : 'NON'}`);
-        return {
-          wc_id: wcProduct.id,
-          name: wcProduct.name,
-          sku: wcProduct.sku || `PRODUCT-${wcProduct.id}`,
-          price: parseFloat(wcProduct.price || 0),
-          stock_quantity: wcProduct.stock_quantity || 0,
-          location: null,
-          qr_code: null,
-          image_url: imageUrl
-        };
-      });
+      // Les variations rejoignent le catalogue comme des produits à part entière
+      const variations = await woocommerceService.getAllVariations(wcProducts);
+      const productsData = [
+        ...wcProducts.map(mapProduct),
+        ...variations.map(({ parent, variation }) => mapVariation(parent, variation))
+      ];
       const products = await Product.bulkUpsert(productsData);
       console.log(`✅ ${products.length} produits synchronisés`);
 

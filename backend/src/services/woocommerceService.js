@@ -200,6 +200,31 @@ class WooCommerceService {
     }
   }
 
+  // Les variations ne sont pas dans /products : chaque produit variable a son propre
+  // endpoint. Une variation en échec n'annule pas la synchro, elle est signalée.
+  async getAllVariations(products) {
+    const variables = products.filter(p => p.type === 'variable');
+    if (this.useMockData || variables.length === 0) return [];
+
+    const found = [];
+    for (const parent of variables) {
+      try {
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const response = await this.api.get(`products/${parent.id}/variations`, { per_page: 100, page });
+          totalPages = parseInt(response.headers['x-wp-totalpages'] || '1');
+          for (const variation of response.data) found.push({ parent, variation });
+          page++;
+        } while (page <= totalPages);
+      } catch (error) {
+        console.warn(`  ⚠️  Variations du produit ${parent.id} (${parent.name}) inaccessibles: ${error.message}`);
+      }
+    }
+    console.log(`  ✓ ${found.length} variation(s) récupérée(s) pour ${variables.length} produit(s) variable(s)`);
+    return found;
+  }
+
   async getOrders(params = { status: 'processing,pending' }) {
     if (this.useMockData) {
       console.log('📋 Récupération des commandes mockées');
