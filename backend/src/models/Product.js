@@ -71,18 +71,22 @@ class Product {
     return result.rows[0];
   }
 
+  // Un produit variable n'existe que par ses variations : on ne l'étiquette, ne le
+  // prélève ni ne le vend jamais lui-même. Les listes n'en montrent que les variations.
+  static SANS_PARENTS = 'NOT EXISTS (SELECT 1 FROM products c WHERE c.parent_wc_id = p.wc_id)';
+
   static async getAll() {
     const result = await pool.query(
-      'SELECT * FROM products ORDER BY name ASC'
+      `SELECT p.* FROM products p WHERE ${Product.SANS_PARENTS} ORDER BY p.name ASC`
     );
     return result.rows;
   }
 
   static async search(searchTerm) {
     const result = await pool.query(
-      `SELECT * FROM products
-       WHERE name ILIKE $1 OR sku ILIKE $1 OR qr_code ILIKE $1
-       ORDER BY name ASC`,
+      `SELECT p.* FROM products p
+       WHERE (p.name ILIKE $1 OR p.sku ILIKE $1 OR p.qr_code ILIKE $1) AND ${Product.SANS_PARENTS}
+       ORDER BY p.name ASC`,
       [`%${searchTerm}%`]
     );
     return result.rows;
@@ -107,6 +111,7 @@ class Product {
       const incomingSkus = new Set(products.map(p => p.sku || `PRODUCT-${p.wc_id || p.id}`));
 
       const existing = await client.query('SELECT id, wc_id, sku FROM products');
+      const ancienneUgs = new Map(existing.rows.map(r => [r.wc_id, r.sku]));
       for (const row of existing.rows) {
         if (incomingWcIds.has(row.wc_id) || incomingSkus.has(row.sku)) {
           await client.query('UPDATE products SET sku = $1 WHERE id = $2', [`__tmp_${row.id}`, row.id]);
@@ -157,6 +162,22 @@ class Product {
             ]
           );
           insertedProducts.push(result.rows[0]);
+          // Le client déplace un produit de bac en changeant son UGS. Le QR généré
+          // (QR-<ugs>) et l'emplacement hérité par ses variations doivent suivre, sinon
+          // le tri du parcours et l'étiquette restent figés sur l'ancien bac. Un QR ou
+          // un emplacement saisis à la main (valeur différente) ne sont pas touchés.
+          const avant = ancienneUgs.get(wcId);
+          if (avant && avant !== sku) {
+            await client.query(
+              `UPDATE products SET qr_code = $1 WHERE id = $2 AND qr_code = $3
+                 AND NOT EXISTS (SELECT 1 FROM products q WHERE q.qr_code = $1)`,
+              [`QR-${sku}`, result.rows[0].id, `QR-${avant}`]
+            );
+            await client.query(
+              'UPDATE products SET location = $1 WHERE parent_wc_id = $2 AND location = $3',
+              [sku, wcId, avant]
+            );
+          }
           await client.query('RELEASE SAVEPOINT product_sp');
         } catch (err) {
           await client.query('ROLLBACK TO SAVEPOINT product_sp');
