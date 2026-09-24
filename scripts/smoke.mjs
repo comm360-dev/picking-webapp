@@ -195,6 +195,10 @@ try {
       const qr = await api('PUT', `/products/${variation.id}/qr`, { token: admin, body: { qrCode: `QR-${variation.sku}`, location: variation.location || 'Z9-99' } });
       const row = (await sql('SELECT qr_code, location FROM products WHERE id=$1', [variation.id]))[0];
       check('admin pose un QR et un emplacement', qr.status === 200 && row.qr_code === `QR-${variation.sku}` && !!row.location, `${row.qr_code} @ ${row.location}`);
+      // Générer une étiquette (QR seul, comme le bouton « Générer QR ») ne doit pas effacer l'emplacement.
+      const qrSeul = await api('PUT', `/products/${variation.id}/qr`, { token: admin, body: { qrCode: `QR-${variation.sku}` } });
+      const row2 = (await sql('SELECT location FROM products WHERE id=$1', [variation.id]))[0];
+      check('générer un QR sans emplacement conserve l\'emplacement existant', qrSeul.status === 200 && row2.location === row.location, `${row2.location}`);
     } else {
       check('au moins une variation en base', false, 'lancer avec SMOKE_SYNC=1');
     }

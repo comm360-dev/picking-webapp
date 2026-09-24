@@ -65,7 +65,9 @@ class Product {
 
   static async updateQRCode(productId, qrCode, location) {
     const result = await pool.query(
-      'UPDATE products SET qr_code = $1, location = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+      // Générer une étiquette ne dit rien de l'emplacement : sans valeur fournie, on garde
+      // celui qui existe (hérité du parent ou saisi), au lieu de l'effacer.
+      'UPDATE products SET qr_code = $1, location = COALESCE($2, location), updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
       [qrCode, location, productId]
     );
     return result.rows[0];
