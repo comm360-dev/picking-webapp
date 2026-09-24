@@ -375,6 +375,13 @@ async function loadOrder() {
         const response = await api.get(`/orders/${orderId}`)
         order.value = response.data
 
+        // Le démarrage marque started_at, d'où découle la durée de préparation des
+        // statistiques ; rien d'autre ne l'enregistre depuis l'application.
+        if (order.value.status === 'processing' && !order.value.started_at) {
+          await syncService.startOrder(orderId)
+          order.value.started_at = new Date().toISOString()
+        }
+
         // Sauvegarder dans le cache
         await ordersDB.put({ ...response.data, synced: true })
 
@@ -472,7 +479,9 @@ async function markItemAsPicked(item) {
       is_picked: isPicked
     })
 
-    // Ajouter à la queue de synchronisation
+    // La file de synchronisation est le seul chemin vers l'API : en ligne elle est
+    // rejouée aussitôt, hors ligne à la reconnexion. Un appel direct en plus doublait
+    // chaque action dans l'historique.
     await syncService.markItemPicked(orderId, item.id, newPickedQty)
 
     // Feedback immédiat
@@ -489,14 +498,6 @@ async function markItemAsPicked(item) {
       manualSku.value = ''
     }
 
-    // Tenter la sync API en arrière-plan (non bloquant)
-    if (syncService.isOnline()) {
-      api.put(`/orders/${orderId}/items/${item.id}/pick`, {
-        pickedQuantity: newPickedQty
-      }).catch(apiErr => {
-        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
-      })
-    }
   } catch (err) {
     console.error('Erreur markItemAsPicked:', err)
     feedbackService.error()
@@ -650,14 +651,6 @@ async function confirmMissing() {
     showFeedback('⚠️ Produit marqué en rupture de stock', 'warning')
     closeMissingModal()
 
-    // Tenter la sync API en arrière-plan (non bloquant)
-    if (syncService.isOnline()) {
-      api.put(`/orders/${orderId}/items/${itemId}/missing`, {
-        notes: notes
-      }).catch(apiErr => {
-        console.warn('API indisponible, sync automatique plus tard:', apiErr.message)
-      })
-    }
   } catch (err) {
     console.error('Erreur confirmMissing:', err)
     showFeedback('❌ Erreur lors de la mise à jour', 'error')

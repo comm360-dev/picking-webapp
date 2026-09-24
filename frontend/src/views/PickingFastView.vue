@@ -332,6 +332,12 @@ async function loadOrder() {
       try {
         const response = await api.get(`/orders/${orderId}`)
         order.value = response.data
+        // Le démarrage marque started_at, d'où découle la durée de préparation des
+        // statistiques ; rien d'autre ne l'enregistre depuis l'application.
+        if (order.value.status === 'processing' && !order.value.started_at) {
+          await syncService.startOrder(orderId)
+          order.value.started_at = new Date().toISOString()
+        }
         await ordersDB.put({ ...response.data, synced: true })
         if (response.data.items) {
           for (const item of response.data.items) {
@@ -463,6 +469,9 @@ async function markItemAsPicked(item) {
       is_picked: isPicked
     })
 
+    // La file de synchronisation est le seul chemin vers l'API : en ligne elle est
+    // rejouée aussitôt, hors ligne à la reconnexion. Un appel direct en plus doublait
+    // chaque action dans l'historique.
     await syncService.markItemPicked(orderId, item.id, recordedQty)
 
     feedbackService.success()
@@ -486,11 +495,6 @@ async function markItemAsPicked(item) {
       scannerPaused.value = false
     }, pauseDuration)
 
-    if (syncService.isOnline()) {
-      api.put(`/orders/${orderId}/items/${item.id}/pick`, {
-        pickedQuantity: recordedQty
-      }).catch(err => console.warn('Sync API error:', err.message))
-    }
   } catch (err) {
     console.error('Erreur markItemAsPicked:', err)
     feedbackService.error()
@@ -537,10 +541,6 @@ async function confirmMissing() {
     showFeedback('⚠️ Produit marqué manquant', 'warning')
     closeMissingModal()
 
-    if (syncService.isOnline()) {
-      api.put(`/orders/${orderId}/items/${item.id}/missing`, { notes })
-        .catch(err => console.warn('Sync API error:', err.message))
-    }
   } catch (err) {
     console.error('Erreur confirmMissing:', err)
     showFeedback('❌ Erreur', 'error')
