@@ -194,12 +194,19 @@ class QuoteController {
           total: (item.unit_price * item.quantity).toFixed(2)
         };
 
-        if (item.product_id) {
-          // Produit existant sur WooCommerce
-          lineItem.product_id = item.product_id;
+        // WooCommerce attend ses propres identifiants, pas ceux de notre table products :
+        // avec l'id local, il créait une ligne vide (product_id 0, sans nom ni UGS).
+        // Une variation se commande par son parent + variation_id.
+        if (item.product_wc_id) {
+          if (item.product_parent_wc_id) {
+            lineItem.product_id = item.product_parent_wc_id;
+            lineItem.variation_id = item.product_wc_id;
+          } else {
+            lineItem.product_id = item.product_wc_id;
+          }
         } else {
           // Produit personnalisé (ligne manuelle)
-          lineItem.name = item.custom_name || 'Article personnalisé';
+          lineItem.name = item.custom_name || item.product_name || 'Article personnalisé';
         }
 
         return lineItem;

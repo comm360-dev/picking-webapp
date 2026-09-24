@@ -32,7 +32,8 @@ class Quote {
     const quote = quoteResult.rows[0];
 
     const itemsResult = await pool.query(
-      `SELECT qi.*, p.name as product_name, p.sku as product_sku, p.image_url, p.price as product_price
+      `SELECT qi.*, p.name as product_name, p.sku as product_sku, p.image_url, p.price as product_price,
+              p.wc_id as product_wc_id, p.parent_wc_id as product_parent_wc_id
        FROM quote_items qi
        LEFT JOIN products p ON qi.product_id = p.id
        WHERE qi.quote_id = $1
