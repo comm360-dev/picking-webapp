@@ -118,8 +118,9 @@ const history = ref([])
 const performance = ref([])
 
 const successRate = computed(() => {
-  const picked = statistics.value.items_picked || 0
-  const missing = statistics.value.items_missing || 0
+  // Les COUNT de PostgreSQL arrivent en chaînes : sans conversion, 16 + 2 donnait "162".
+  const picked = Number(statistics.value.items_picked) || 0
+  const missing = Number(statistics.value.items_missing) || 0
   const total = picked + missing
   if (total === 0) return 0
   return Math.round((picked / total) * 100)
