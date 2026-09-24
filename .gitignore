@@ -142,3 +142,6 @@ vite.config.ts.timestamp-*
 
 # Tunnel ngrok local : contient un jeton personnel
 ngrok.yml
+
+# État des boucles de travail (non versionné)
+.scratch/
