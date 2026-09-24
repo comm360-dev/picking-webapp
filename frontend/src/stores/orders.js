@@ -168,7 +168,8 @@ export const useOrdersStore = defineStore('orders', () => {
         orders.value[index] = { ...orders.value[index], ...response.data.order }
       }
 
-      return { success: true }
+      // Le serveur a pu terminer la commande sans réussir à prévenir le site : l'écran doit le dire.
+      return { success: true, wcSyncError: response.data.wcSyncError || null }
     } catch (err) {
       error.value = err.response?.data?.message || 'Erreur lors de la finalisation'
       return { success: false, error: error.value }

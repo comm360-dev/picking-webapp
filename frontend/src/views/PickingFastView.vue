@@ -558,29 +558,40 @@ async function completeAndNext() {
   const wasHeld = !!order.value.held_for_stock
 
   try {
-    await ordersStore.completeOrder(order.value.id)
+    // completeOrder ne lève pas : sans ce contrôle, un refus du serveur (article
+    // manquant, panne) était annoncé comme une réussite et on passait à la suivante.
+    const result = await ordersStore.completeOrder(order.value.id)
+    if (!result.success) {
+      showFeedback(`❌ ${result.error}`, 'error')
+      return
+    }
+    // L'avertissement doit rester lisible avant de changer d'écran.
+    const delai = result.wcSyncError ? 5000 : 800
+    if (result.wcSyncError) {
+      showFeedback('⚠️ Commande finalisée ici, mais le site n\'a pas été mis à jour : ' + result.wcSyncError, 'warning')
+    }
     await ordersStore.fetchOrders()
 
     if (wasHeld) {
-      showFeedback('🎉 Commande finalisée !', 'success')
+      if (!result.wcSyncError) showFeedback('🎉 Commande finalisée !', 'success')
       setTimeout(() => {
         router.push('/dashboard?tab=on-hold')
-      }, 800)
+      }, delai)
       return
     }
 
     const nextOrder = ordersStore.pendingOrders[0]
 
     if (nextOrder) {
-      showFeedback('🎉 Commande finalisée !', 'success')
+      if (!result.wcSyncError) showFeedback('🎉 Commande finalisée !', 'success')
       setTimeout(() => {
         router.push(`/picking/${nextOrder.id}/fast`)
-      }, 800)
+      }, delai)
     } else {
-      showFeedback('🎉 Toutes les commandes sont terminées !', 'success')
+      if (!result.wcSyncError) showFeedback('🎉 Toutes les commandes sont terminées !', 'success')
       setTimeout(() => {
         router.push('/dashboard')
-      }, 1000)
+      }, Math.max(delai, 1000))
     }
   } catch (err) {
     showFeedback('❌ Erreur lors de la finalisation', 'error')
