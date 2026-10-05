@@ -74,8 +74,8 @@
                 <img :src="getImageUrl(item.image_url)" :alt="item.name" />
               </div>
               <div class="item-info">
-                <h4>{{ item.name }}</h4>
-                <p class="item-sku">SKU: {{ item.sku }}</p>
+                <h4>{{ nomProduit(item) }}</h4>
+                <p class="item-sku">SKU: {{ ugsAffichee(item) }}</p>
                 <p v-if="item.location" class="item-location">📍 {{ item.location }}</p>
               </div>
               <div class="item-status">
@@ -83,6 +83,8 @@
                 <span v-else class="status-badge pending">En attente</span>
               </div>
             </div>
+
+            <p v-if="choixVariation(item)" class="item-variation">{{ choixVariation(item) }}</p>
 
             <div class="item-footer">
               <div class="quantity-info">
@@ -221,7 +223,10 @@
               <h4>Articles scannés ({{ pickedItems }} / {{ totalItems }})</h4>
               <ul class="recap-items-list">
                 <li v-for="item in order.items.filter(i => i.is_picked)" :key="item.id" class="recap-item">
-                  <span class="recap-item-name">{{ item.name }}</span>
+                  <span class="recap-item-name">
+                    {{ nomProduit(item) }}
+                    <strong v-if="choixVariation(item)" class="recap-item-variation">{{ choixVariation(item) }}</strong>
+                  </span>
                   <span class="recap-item-qty">x{{ item.picked_quantity }}</span>
                 </li>
               </ul>
@@ -246,7 +251,7 @@
       <div class="modal-content" @click.stop>
         <h2>⚠️ Produit manquant</h2>
         <p class="modal-product-name">{{ missingItem?.name }}</p>
-        <p class="modal-product-sku">SKU: {{ missingItem?.sku }}</p>
+        <p class="modal-product-sku">SKU: {{ ugsAffichee(missingItem) }}</p>
 
         <div class="form-group checkbox-group">
           <label class="checkbox-label">
@@ -274,6 +279,7 @@ import QRScanner from '../components/QRScanner.vue'
 import { ordersDB, orderItemsDB } from '../services/db'
 import syncService from '../services/sync'
 import { trierParParcours } from '../utils/pickingOrder'
+import { choixVariation, nomProduit, ugsAffichee, codeCorrespond } from '../utils/variation'
 
 const router = useRouter()
 const route = useRoute()
@@ -438,13 +444,11 @@ function handleScan(scannedCode) {
   if (!currentItem) return
 
   // Le QR code peut être au format "QR-SKU123" ou directement "SKU123"
-  const extractedSku = scannedCode.startsWith('QR-') ? scannedCode.substring(3) : scannedCode
-
-  if (extractedSku.toUpperCase() === currentItem.sku.toUpperCase()) {
+  if (codeCorrespond(currentItem, scannedCode)) {
     markItemAsPicked(currentItem)
   } else {
     feedbackService.error()
-    showFeedback(`❌ QR Code incorrect ! Attendu: ${currentItem.sku}, Scanné: ${extractedSku}`, 'error')
+    showFeedback(`❌ QR Code incorrect ! Attendu: ${ugsAffichee(currentItem)}, Scanné: ${scannedCode.replace(/^QR-/i, '')}`, 'error')
   }
 }
 
@@ -455,11 +459,11 @@ async function validateManualSku(item) {
     return
   }
 
-  if (manualSku.value.trim().toUpperCase() === item.sku.toUpperCase()) {
+  if (codeCorrespond(item, manualSku.value)) {
     await markItemAsPicked(item)
   } else {
     feedbackService.error()
-    showFeedback('❌ SKU incorrect ! Attendu: ' + item.sku, 'error')
+    showFeedback('❌ SKU incorrect ! Attendu: ' + ugsAffichee(item), 'error')
   }
 }
 
@@ -1113,6 +1117,23 @@ async function unpickItem(item) {
   border-radius: var(--radius-sm);
   border: 1px solid rgba(12, 180, 212, 0.2);
   display: inline-block;
+}
+
+/* Le choix du client sur un produit à variation : c'est lui qui dit quoi prendre dans le bac.
+   Sur toute la largeur de la carte : certains choix font une phrase entière. */
+.item-variation {
+  margin: 0 0 0.75rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  background: var(--warning);
+  color: #1F2937;
+  font-size: 0.938rem;
+  font-weight: 700;
+}
+
+.recap-item-variation {
+  display: block;
+  color: #B45309;
 }
 
 .item-location {

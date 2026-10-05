@@ -21,9 +21,13 @@ class OrderItem {
 
   static async getByOrderId(orderId) {
     const result = await pool.query(
-      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code, p.image_url
+      `SELECT oi.*, p.name, p.sku, p.location, p.qr_code, p.image_url,
+              pp.name AS parent_name, pp.sku AS parent_sku
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
+       -- Une variation est rangée et étiquetée avec son produit parent : on expose son
+       -- nom et son UGS pour afficher le choix du client à part et accepter l'étiquette du bac.
+       LEFT JOIN products pp ON pp.wc_id = p.parent_wc_id
        WHERE oi.order_id = $1
        -- L'UGS sert de code d'emplacement (A2-41, C4-23...) : on l'utilise pour
        -- ordonner le parcours. Sans ORDER BY, chaque prélèvement (UPDATE) déplaçait

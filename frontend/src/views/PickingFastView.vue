@@ -72,7 +72,10 @@
                     <img :src="getImageUrl(item.image_url)" :alt="item.name" />
                   </div>
                   <div class="recap-item-thumb recap-item-thumb-placeholder" v-else>📦</div>
-                  <span class="recap-item-name">{{ item.name }}</span>
+                  <span class="recap-item-name">
+                    <span class="recap-item-title">{{ nomProduit(item) }}</span>
+                    <span v-if="choixVariation(item)" class="recap-item-variation">{{ choixVariation(item) }}</span>
+                  </span>
                   <span class="recap-item-qty">x{{ item.picked_quantity }}</span>
                 </li>
               </ul>
@@ -114,8 +117,9 @@
       <div v-else class="item-picking">
         <!-- Infos article : nom, UGS, quantité (au-dessus de la caméra) -->
         <div class="current-item-header" v-if="currentItem">
-          <h2 class="item-name">{{ currentItem.name }}</h2>
-          <p class="item-sku">UGS: <strong>{{ currentItem.sku }}</strong></p>
+          <h2 class="item-name">{{ nomProduit(currentItem) }}</h2>
+          <p v-if="choixVariation(currentItem)" class="item-variation">{{ choixVariation(currentItem) }}</p>
+          <p class="item-sku">UGS: <strong>{{ ugsAffichee(currentItem) }}</strong></p>
           <p v-if="currentItem.location" class="item-location">📍 {{ currentItem.location }}</p>
 
           <div class="quantity-display">
@@ -232,6 +236,7 @@ import feedbackService from '../services/feedback'
 import { useOrdersStore } from '../stores/orders'
 import QRScanner from '../components/QRScanner.vue'
 import { comparerParParcours } from '../utils/pickingOrder'
+import { choixVariation, nomProduit, ugsAffichee, codeCorrespond } from '../utils/variation'
 
 const router = useRouter()
 const route = useRoute()
@@ -424,24 +429,22 @@ function getImageUrl(url) {
 function handleScan(scannedCode) {
   if (!currentItem.value) return
 
-  const extractedSku = scannedCode.startsWith('QR-') ? scannedCode.substring(3) : scannedCode
-
-  if (extractedSku.toUpperCase() === currentItem.value.sku.toUpperCase()) {
+  if (codeCorrespond(currentItem.value, scannedCode)) {
     markItemAsPicked(currentItem.value)
   } else {
     feedbackService.error()
-    showFeedback(`❌ Mauvais produit ! Attendu: ${currentItem.value.sku}`, 'error')
+    showFeedback(`❌ Mauvais produit ! Attendu: ${ugsAffichee(currentItem.value)}`, 'error')
   }
 }
 
 function validateManualSku() {
   if (!manualSku.value.trim() || !currentItem.value) return
 
-  if (manualSku.value.trim().toUpperCase() === currentItem.value.sku.toUpperCase()) {
+  if (codeCorrespond(currentItem.value, manualSku.value)) {
     markItemAsPicked(currentItem.value)
   } else {
     feedbackService.error()
-    showFeedback(`❌ SKU incorrect ! Attendu: ${currentItem.value.sku}`, 'error')
+    showFeedback(`❌ SKU incorrect ! Attendu: ${ugsAffichee(currentItem.value)}`, 'error')
   }
   manualSku.value = ''
 }
@@ -776,6 +779,18 @@ function goToFullView() {
   color: var(--text-primary);
 }
 
+/* Le choix du client sur un produit à variation : c'est lui qui dit quoi prendre dans le bac. */
+.item-variation {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: var(--warning);
+  color: #1F2937;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
 .item-sku {
   font-size: 1rem;
   color: var(--text-secondary);
@@ -1087,13 +1102,25 @@ function goToFullView() {
 }
 
 .recap-item-name {
+  display: flex;
+  flex-direction: column;
   font-size: 0.813rem;
   color: var(--text-primary);
+  margin-right: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.recap-item-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 0.5rem;
-  flex: 1;
+}
+
+/* Jamais tronqué : c'est ce qu'on vérifie avant de fermer le colis. */
+.recap-item-variation {
+  font-weight: 700;
+  color: #B45309;
 }
 
 .recap-item-qty {

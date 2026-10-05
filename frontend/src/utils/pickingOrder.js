@@ -1,3 +1,5 @@
+import { estCodeTechnique } from './variation'
+
 // Ordre de parcours de l'entrepôt.
 //
 // Les UGS servent de codes d'emplacement (A2-41, C4-23, B5-43...), et les QR
@@ -17,8 +19,11 @@ const PREFIXE_QR = /^QR-/i
 export function cleDeParcours(item) {
   if (!item) return ''
   const qr = (item.qr_code || '').replace(PREFIXE_QR, '').trim()
-  if (qr) return qr
-  return (item.location || '').trim()
+  const emplacement = (item.location || '').trim()
+  // Une variation sans UGS propre porte un code technique (PRODUCT-123), qui n'est pas
+  // un emplacement : son bac est celui du parent, hérité dans `location`.
+  if (qr && !(estCodeTechnique(qr) && emplacement)) return qr
+  return emplacement
     || (item.sku || '').trim()
     || (item.name || '').trim()
 }
