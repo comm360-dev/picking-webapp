@@ -4,9 +4,22 @@
 
 const proxyImage = (src) => (src ? `/api/image-proxy?url=${encodeURIComponent(src)}` : null);
 
+// « Avec » ou « Sans » ne disent rien sans leur attribut : on nomme chaque choix
+// (« Fixation : Avec »). La boutique écrit certains attributs avec leur deux-points
+// (« Option : »), d'où le nettoyage.
+function choixDeVariation(variation) {
+  return (variation.attributes || [])
+    .filter(a => a.option)
+    .map(a => {
+      const attribut = (a.name || '').replace(/[\s:]+$/, '');
+      return attribut ? `${attribut} : ${a.option}` : a.option;
+    })
+    .join(', ');
+}
+
 function nomDeVariation(parent, variation) {
-  const options = (variation.attributes || []).map(a => a.option).filter(Boolean).join(', ');
-  return options ? `${parent.name} – ${options}` : parent.name;
+  const choix = choixDeVariation(variation);
+  return choix ? `${parent.name} – ${choix}` : parent.name;
 }
 
 function mapProduct(wc) {
