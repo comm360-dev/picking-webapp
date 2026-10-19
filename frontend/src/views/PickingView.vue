@@ -518,6 +518,7 @@ async function completeAndNext() {
     const result = await ordersStore.completeOrder(order.value.id)
     if (!result.success) {
       showFeedback(`❌ ${result.error}`, 'error')
+      if (result.code === 'ORDER_CANCELLED_ON_SHOP') quitterCommandeAbandonnee()
       return
     }
     // L'avertissement doit rester lisible avant de changer d'écran.
@@ -605,10 +606,17 @@ async function resumeOrder() {
 
     showFeedback('▶️ Commande reprise ! Vous pouvez scanner les articles.', 'success')
   } catch (err) {
-    showFeedback('❌ Erreur lors de la reprise', 'error')
+    showFeedback(`❌ ${err.response?.data?.message || 'Erreur lors de la reprise'}`, 'error')
+    if (err.response?.data?.code === 'ORDER_CANCELLED_ON_SHOP') quitterCommandeAbandonnee()
   } finally {
     resuming.value = false
   }
+}
+
+// Remboursée ou annulée sur le site : le serveur l'a retirée de l'app, on laisse le temps
+// de lire pourquoi avant de revenir à la liste.
+function quitterCommandeAbandonnee() {
+  setTimeout(() => router.push('/dashboard'), 4000)
 }
 
 function showFeedback(message, type) {

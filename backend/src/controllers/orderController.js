@@ -24,6 +24,38 @@ function statutLocalDepuisWooCommerce(statutWc) {
   // 'completed' et tous les statuts d'expédition du transporteur (lpc_*)
   return 'completed';
 }
+
+const LIBELLE_ABANDON = { cancelled: 'annulée', refunded: 'remboursée', failed: 'en échec' };
+
+// Une commande peut être remboursée ou annulée sur le site entre deux synchros, typiquement
+// pendant qu'elle dort en attente ici. Avant de la reprendre ou de la finaliser, on demande
+// donc au site où elle en est : finaliser une commande remboursée écrasait « Remboursée »
+// par « Prêt pour expédition » (#73442). Site injoignable : null, on ne bloque pas le travail.
+async function statutSurLeSite(wcId) {
+  if (!wcId) return null;
+  try {
+    const [wcOrder] = await woocommerceService.getOrdersByIds([wcId]);
+    return wcOrder?.status || null;
+  } catch (error) {
+    console.warn(`⚠️  Statut WooCommerce de la commande #${wcId} illisible : ${error.message}`);
+    return null;
+  }
+}
+
+// Si le site a abandonné la commande, on l'aligne ici et on renvoie le refus à adresser au
+// préparateur ; sinon null.
+async function refusSiAbandonneeSurLeSite(order, statutWc) {
+  if (!STATUTS_WC_ABANDON.includes(statutWc)) return null;
+  await Order.updateStatus(order.id, 'cancelled');
+  const libelle = LIBELLE_ABANDON[statutWc];
+  console.log(`🚫 Commande #${order.order_number} ${libelle} sur WooCommerce : retirée de l'app, rien n'est envoyé au site`);
+  return {
+    message: `Commande ${libelle} sur le site : ne pas la préparer ni l'expédier. Elle est retirée de l'application.`,
+    code: 'ORDER_CANCELLED_ON_SHOP',
+    shopStatus: statutWc
+  };
+}
+
 class OrderController {
   static async syncOrders(req, res) {
     try {
@@ -194,6 +226,17 @@ class OrderController {
       const { id } = req.params;
       const { status } = req.body;
 
+      // Reprendre une commande en attente la renvoie dans « à préparer » : pas si le site
+      // l'a remboursée ou annulée entre-temps.
+      if (['processing', 'preparation'].includes(status)) {
+        const existante = await Order.findById(id);
+        if (!existante) {
+          return res.status(404).json({ message: 'Commande non trouvée' });
+        }
+        const refus = await refusSiAbandonneeSurLeSite(existante, await statutSurLeSite(existante.wc_id));
+        if (refus) return res.status(409).json(refus);
+      }
+
       const order = await Order.updateStatus(id, status);
 
       if (!order) {
@@ -259,6 +302,14 @@ class OrderController {
         });
       }
 
+      const existante = await Order.findById(id);
+      if (!existante) {
+        return res.status(404).json({ message: 'Commande non trouvée' });
+      }
+      const statutWc = await statutSurLeSite(existante.wc_id);
+      const refus = await refusSiAbandonneeSurLeSite(existante, statutWc);
+      if (refus) return res.status(409).json(refus);
+
       const order = await Order.completePicking(id, userId);
 
       if (!order) {
@@ -279,16 +330,22 @@ class OrderController {
 
       // Mettre à jour le statut sur WooCommerce
       let wcSyncError = null;
-      try {
-        console.log(`🔄 Commande #${order.wc_id} -> statut WooCommerce "${WC_STATUS_ON_COMPLETE}"...`);
-        await woocommerceService.updateOrderStatus(order.wc_id, WC_STATUS_ON_COMPLETE);
-        console.log(`✅ Statut WooCommerce mis à jour pour la commande #${order.wc_id}`);
-      } catch (wcError) {
-        // Non bloquant : le préparateur a fait son travail, on ne le lui reprend pas
-        // parce que le site est injoignable. Mais on le dit fort, et on le remonte dans
-        // la réponse — un statut mal configuré ferait échouer toutes les commandes.
-        wcSyncError = wcError.message;
-        console.error(`❌ Commande #${order.wc_id} : statut "${WC_STATUS_ON_COMPLETE}" NON appliqué sur WooCommerce — ${wcError.message}`);
+      // Déjà terminée ou partie chez le transporteur sur le site : la repasser en
+      // « prêt pour expédition » la ferait reculer.
+      if (statutWc && statutLocalDepuisWooCommerce(statutWc) === 'completed') {
+        console.log(`⏭️ Commande #${order.wc_id} déjà "${statutWc}" sur WooCommerce : statut laissé tel quel`);
+      } else {
+        try {
+          console.log(`🔄 Commande #${order.wc_id} -> statut WooCommerce "${WC_STATUS_ON_COMPLETE}"...`);
+          await woocommerceService.updateOrderStatus(order.wc_id, WC_STATUS_ON_COMPLETE);
+          console.log(`✅ Statut WooCommerce mis à jour pour la commande #${order.wc_id}`);
+        } catch (wcError) {
+          // Non bloquant : le préparateur a fait son travail, on ne le lui reprend pas
+          // parce que le site est injoignable. Mais on le dit fort, et on le remonte dans
+          // la réponse — un statut mal configuré ferait échouer toutes les commandes.
+          wcSyncError = wcError.message;
+          console.error(`❌ Commande #${order.wc_id} : statut "${WC_STATUS_ON_COMPLETE}" NON appliqué sur WooCommerce — ${wcError.message}`);
+        }
       }
 
       res.json({

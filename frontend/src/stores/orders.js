@@ -172,7 +172,8 @@ export const useOrdersStore = defineStore('orders', () => {
       return { success: true, wcSyncError: response.data.wcSyncError || null }
     } catch (err) {
       error.value = err.response?.data?.message || 'Erreur lors de la finalisation'
-      return { success: false, error: error.value }
+      // ORDER_CANCELLED_ON_SHOP : remboursée ou annulée sur le site, l'écran doit la quitter.
+      return { success: false, error: error.value, code: err.response?.data?.code }
     }
   }
 
