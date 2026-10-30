@@ -1,29 +1,26 @@
-import { estCodeTechnique } from './variation'
+import { estCodeTechnique, ugsReelle } from './variation'
 
 // Ordre de parcours de l'entrepôt.
 //
-// Les UGS servent de codes d'emplacement (A2-41, C4-23, B5-43...), et les QR
-// codes en sont dérivés (`QR-${sku}`, cf. AdminQRView). Trier sur l'un ou
-// l'autre revient donc au même parcours, à condition de retirer le préfixe.
+// Les UGS servent de codes d'emplacement (A2-41, C4-23, B5-43...) : le préparateur
+// suit la liste dans l'ordre alphabétique des UGS qu'il voit à l'écran. On trie donc
+// d'abord sur cette UGS (cf. ugsReelle), jamais sur le QR ou l'emplacement enregistrés :
+// le client réaffecte ses UGS plusieurs fois par semaine, et ces deux champs peuvent
+// garder l'ancienne valeur, ce qui plaçait l'article à son ancien rang.
 //
-// Le tri se faisait auparavant sur le seul `qr_code`. Or ce champ n'est rempli
-// qu'à la main depuis « Gestion QR » : il vaut null pour tout produit qui n'y
-// est pas passé. Toutes les clés valaient alors '', le comparateur renvoyait 0
-// partout, et le tri — stable — laissait la liste dans l'ordre du panier client.
-// D'où la cascade ci-dessous : elle ne peut pas retomber à vide, `sku` étant
-// NOT NULL en base.
+// Une variation sans aucune UGS n'a qu'un code technique (PRODUCT-123), qui n'est pas
+// un emplacement : on se rabat alors sur ce qui a été saisi dans Gestion QR.
 
 const PREFIXE_QR = /^QR-/i
 
-// Premier champ renseigné, du plus précis au plus général.
 export function cleDeParcours(item) {
   if (!item) return ''
+  const ugs = ugsReelle(item)
+  if (ugs) return ugs
   const qr = (item.qr_code || '').replace(PREFIXE_QR, '').trim()
-  const emplacement = (item.location || '').trim()
-  // Une variation sans UGS propre porte un code technique (PRODUCT-123), qui n'est pas
-  // un emplacement : son bac est celui du parent, hérité dans `location`.
-  if (qr && !(estCodeTechnique(qr) && emplacement)) return qr
-  return emplacement
+  if (qr && !estCodeTechnique(qr)) return qr
+  return (item.location || '').trim()
+    || qr
     || (item.sku || '').trim()
     || (item.name || '').trim()
 }

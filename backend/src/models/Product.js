@@ -100,6 +100,7 @@ class Product {
       await client.query('BEGIN');
       const insertedProducts = [];
       const skippedProducts = [];
+      const ugsChangees = [];
 
       // ── Phase 1 : neutraliser les UGS concernées par une réaffectation ──
       // Le client réutilise les UGS comme des emplacements : une même UGS peut
@@ -164,21 +165,9 @@ class Product {
             ]
           );
           insertedProducts.push(result.rows[0]);
-          // Le client déplace un produit de bac en changeant son UGS. Le QR généré
-          // (QR-<ugs>) et l'emplacement hérité par ses variations doivent suivre, sinon
-          // le tri du parcours et l'étiquette restent figés sur l'ancien bac. Un QR ou
-          // un emplacement saisis à la main (valeur différente) ne sont pas touchés.
           const avant = ancienneUgs.get(wcId);
           if (avant && avant !== sku) {
-            await client.query(
-              `UPDATE products SET qr_code = $1 WHERE id = $2 AND qr_code = $3
-                 AND NOT EXISTS (SELECT 1 FROM products q WHERE q.qr_code = $1)`,
-              [`QR-${sku}`, result.rows[0].id, `QR-${avant}`]
-            );
-            await client.query(
-              'UPDATE products SET location = $1 WHERE parent_wc_id = $2 AND location = $3',
-              [sku, wcId, avant]
-            );
+            ugsChangees.push({ id: result.rows[0].id, wcId, avant, sku });
           }
           await client.query('RELEASE SAVEPOINT product_sp');
         } catch (err) {
@@ -194,6 +183,36 @@ class Product {
             throw err;
           }
         }
+      }
+
+      // ── Phase 3 : le QR généré et l'emplacement suivent l'UGS ──
+      // Le client déplace un produit de bac en changeant son UGS. Le QR généré
+      // (QR-<ugs>) et l'emplacement copié de l'UGS (le sien, ou celui hérité par ses
+      // variations) doivent suivre, sinon l'étiquette de l'ancien bac continue de
+      // valider le prélèvement. Un QR ou un emplacement saisis à la main (valeur
+      // différente) ne sont pas touchés. Cela se fait une fois toutes les UGS posées,
+      // et les QR sont d'abord libérés : si deux produits échangent leurs bacs, chacun
+      // réclame le QR que l'autre détient encore.
+      for (const { id, wcId, avant, sku } of ugsChangees) {
+        await client.query(
+          'UPDATE products SET location = $1 WHERE (id = $2 OR parent_wc_id = $3) AND location = $4',
+          [sku, id, wcId, avant]
+        );
+      }
+      const qrALiberer = await client.query(
+        `UPDATE products p SET qr_code = NULL
+         FROM unnest($1::int[], $2::text[]) AS c(id, avant)
+         WHERE p.id = c.id AND p.qr_code = 'QR-' || c.avant
+         RETURNING p.id`,
+        [ugsChangees.map(c => c.id), ugsChangees.map(c => c.avant)]
+      );
+      const qrLiberes = new Set(qrALiberer.rows.map(r => r.id));
+      for (const { id, sku } of ugsChangees.filter(c => qrLiberes.has(c.id))) {
+        await client.query(
+          `UPDATE products SET qr_code = $1 WHERE id = $2
+             AND NOT EXISTS (SELECT 1 FROM products q WHERE q.qr_code = $1)`,
+          [`QR-${sku}`, id]
+        );
       }
 
       await client.query('COMMIT');
